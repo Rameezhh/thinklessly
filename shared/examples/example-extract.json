@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "startUrl": "https://example.com",
+  "fields": [],
+  "steps": [
+    {
+      "id": "goto-home",
+      "type": "goto",
+      "url": "https://example.com"
+    },
+    {
+      "id": "wait-load",
+      "type": "wait",
+      "kind": "networkIdle",
+      "value": 0,
+      "timeoutMs": 20000
+    },
+    {
+      "id": "extract-heading",
+      "type": "extract",
+      "selectors": [
+        { "kind": "css", "value": "h1" },
+        { "kind": "css", "value": "body p" }
+      ],
+      "attribute": "text",
+      "outputKey": "heading"
+    },
+    {
+      "id": "screenshot-home",
+      "type": "screenshot",
+      "name": "home.png",
+      "fullPage": true
+    }
+  ],
+  "settings": {
+    "viewport": { "width": 1280, "height": 720 },
+    "stepTimeoutMs": 15000,
+    "runTimeoutMs": 300000,
+    "allowHumanHelp": true
+  }
+}

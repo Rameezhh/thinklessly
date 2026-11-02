@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime     @default(now())
+  memberships  Membership[]
+}
+
+model Team {
+  id                  String       @id @default(cuid())
+  name                String
+  plan                String       @default("FREE")
+  webhookUrl          String?
+  webhookSecretCipher String?
+  createdAt           DateTime     @default(now())
+  memberships         Membership[]
+  automations         Automation[]
+  secrets             Secret[]
+  runs                Run[]
+  apiKeys             ApiKey[]
+}
+
+model Membership {
+  userId String
+  teamId String
+  role   String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([userId, teamId])
+  @@index([teamId])
+}
+
+model Automation {
+  id               String              @id @default(cuid())
+  teamId           String
+  name             String
+  description      String?
+  status           String              @default("DRAFT")
+  currentVersionId String?
+  draftDefinition  String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  team             Team                @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  currentVersion   AutomationVersion?  @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  versions         AutomationVersion[] @relation("AutomationVersions")
+  secrets          Secret[]
+  triggers         Trigger[]
+  runs             Run[]
+
+  @@index([teamId])
+}
+
+model AutomationVersion {
+  id            String       @id @default(cuid())
+  automationId  String
+  versionNumber Int
+  definition    String
+  createdAt     DateTime     @default(now())
+  automation    Automation   @relation("AutomationVersions", fields: [automationId], references: [id], onDelete: Cascade)
+  currentFor    Automation[] @relation("CurrentVersion")
+  runs          Run[]
+
+  @@unique([automationId, versionNumber])
+  @@index([automationId])
+}
+
+model Secret {
+  id             String     @id @default(cuid())
+  teamId         String
+  automationId   String
+  fieldKey       String
+  encryptedValue String
+  iv             String
+  authTag        String
+  createdAt      DateTime   @default(now())
+  team           Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  automation     Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@unique([automationId, fieldKey])
+  @@index([teamId])
+  @@index([automationId])
+}
+
+model Trigger {
+  id             String     @id @default(cuid())
+  automationId   String
+  type           String
+  cronExpression String?
+  timezone       String?
+  delaySeconds   Int?
+  inputs         String     @default("{}")
+  enabled        Boolean    @default(true)
+  nextRunAt      DateTime?
+  lastFiredAt    DateTime?
+  createdAt      DateTime   @default(now())
+  automation     Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@index([automationId])
+}
+
+model Run {
+  id               String            @id @default(cuid())
+  automationId     String
+  versionId        String
+  teamId           String
+  status           String
+  triggerSource    String
+  idempotencyKey   String?
+  inputs           String
+  ephemeralSecrets String?
+  outputs          String?
+  error            String?
+  scheduledAt      DateTime          @default(now())
+  startedAt        DateTime?
+  finishedAt       DateTime?
+  createdAt        DateTime          @default(now())
+  automation       Automation        @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  version          AutomationVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  team             Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  logs             RunLog[]
+  artifacts        RunArtifact[]
+
+  @@unique([teamId, idempotencyKey])
+  @@index([teamId])
+  @@index([automationId])
+  @@index([status, scheduledAt])
+  @@index([versionId])
+}
+
+model RunLog {
+  id        String   @id @default(cuid())
+  runId     String
+  level     String
+  message   String
+  stepId    String?
+  createdAt DateTime @default(now())
+  run       Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+}
+
+model RunArtifact {
+  id        String   @id @default(cuid())
+  runId     String
+  kind      String
+  path      String
+  createdAt DateTime @default(now())
+  run       Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  teamId     String
+  name       String
+  keyHash    String    @unique
+  prefix     String
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  team       Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+}

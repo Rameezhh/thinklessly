@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "startUrl": "https://example.com",
+  "fields": [
+    {
+      "key": "email",
+      "label": "Email",
+      "type": "email",
+      "secret": false,
+      "required": true,
+      "defaultValue": "demo@example.com"
+    },
+    {
+      "key": "password",
+      "label": "Password",
+      "type": "password",
+      "secret": true,
+      "required": true
+    }
+  ],
+  "steps": [
+    {
+      "id": "goto-home",
+      "type": "goto",
+      "url": "https://example.com"
+    },
+    {
+      "id": "fill-email",
+      "type": "fill",
+      "selectors": [
+        { "kind": "label", "value": "Email" },
+        { "kind": "css", "value": "input[type=email]" }
+      ],
+      "value": { "mode": "field", "key": "email" }
+    },
+    {
+      "id": "fill-password",
+      "type": "fill",
+      "selectors": [
+        { "kind": "label", "value": "Password" },
+        { "kind": "css", "value": "input[type=password]" }
+      ],
+      "value": { "mode": "field", "key": "password" }
+    },
+    {
+      "id": "click-login",
+      "type": "click",
+      "selectors": [
+        { "kind": "role", "value": "button", "name": "Log in" },
+        { "kind": "text", "value": "Log in" }
+      ]
+    },
+    {
+      "id": "wait-after-login",
+      "type": "wait",
+      "kind": "networkIdle",
+      "value": 0
+    },
+    {
+      "id": "screenshot-after-login",
+      "type": "screenshot",
+      "name": "after-login.png"
+    }
+  ],
+  "settings": {
+    "viewport": { "width": 1280, "height": 720 },
+    "stepTimeoutMs": 15000,
+    "runTimeoutMs": 300000,
+    "allowHumanHelp": true
+  }
+}

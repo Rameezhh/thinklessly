@@ -1,0 +1,57 @@
+{
+  "name": "webtomate",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k -n web,worker -c cyan,magenta \"pnpm dev:web\" \"pnpm dev:worker\"",
+    "dev:web": "next dev",
+    "dev:worker": "tsx watch worker/index.ts",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "ensure:data": "node -e \"require('fs').mkdirSync('data',{recursive:true})\"",
+    "predev": "pnpm ensure:data",
+    "seed": "tsx prisma/seed.ts",
+    "gen:key": "tsx scripts/gen-key.ts",
+    "run-file": "tsx worker/run-file.ts",
+    "enqueue-test": "tsx scripts/enqueue-test.ts",
+    "db:migrate": "pnpm ensure:data && prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:generate": "prisma generate"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3",
+    "bcryptjs": "^3.0.3",
+    "croner": "^11.0.0",
+    "dotenv": "^18.0.9",
+    "jose": "^6.2.13",
+    "next": "16.4.3",
+    "playwright": "^1.64.1",
+    "prisma": "6.19.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "ws": "^8.22.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/ws": "^8.18.2",
+    "concurrently": "^10.0.6",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.3",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "vitest": "^5.0.5"
+  },
+  "packageManager": "pnpm@12.16.1"
+}
