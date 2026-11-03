@@ -1,0 +1,293 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { prisma } from "@shared/db";
+import {
+  DefinitionError,
+  findStepById,
+  parseDefinition,
+  updateStepById,
+  type AutomationDefinition,
+  type Field,
+} from "@shared/definition";
+import { fillToCredential, fillToPayload, inferPayloadFieldType, type FillStep } from "@shared/fields";
+import { toJson } from "@shared/json";
+import { encryptSecret } from "@shared/secrets";
+import { findAutomation } from "./ownership";
+import { requireUser } from "./session";
+
+export type FieldPanelState = { error?: string; success?: string };
+
+const idSchema = z.string().min(1);
+
+const valuesSchema = z.record(z.string(), z.string().max(50_000));
+
+function issuesText(error: unknown): string {
+  if (error instanceof DefinitionError) return error.issues.join("\n");
+  return "The automation definition is invalid.";
+}
+
+type Loaded = {
+  automationId: string;
+  definition: AutomationDefinition;
+};
+
+async function loadCurrent(teamId: string, automationId: string): Promise<Loaded | null> {
+  const automation = await findAutomation(teamId, automationId);
+  if (!automation?.currentVersion) return null;
+  try {
+    return {
+      automationId: automation.id,
+      definition: parseDefinition(automation.currentVersion.definition),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function saveVersion(automationId: string, definition: AutomationDefinition): Promise<number> {
+  return prisma.$transaction(async (tx) => {
+    const latest = await tx.automationVersion.aggregate({
+      where: { automationId },
+      _max: { versionNumber: true },
+    });
+    const next = (latest._max.versionNumber ?? 0) + 1;
+    const version = await tx.automationVersion.create({
+      data: {
+        automationId,
+        versionNumber: next,
+        definition: toJson(definition),
+      },
+    });
+    await tx.automation.update({
+      where: { id: automationId },
+      data: { currentVersionId: version.id },
+    });
+    return next;
+  });
+}
+
+function coerceDefault(field: Field, raw: string): Field["defaultValue"] {
+  if (field.type === "checkbox") return raw === "true" || raw === "on";
+  if (field.type === "number") {
+    if (raw.trim() === "") return undefined;
+    const number = Number(raw);
+    return Number.isFinite(number) ? number : raw;
+  }
+  return raw;
+}
+
+export async function savePayloadDefaultsAction(
+  automationId: string,
+  _previousState: FieldPanelState,
+  formData: FormData,
+): Promise<FieldPanelState> {
+  void _previousState;
+  const user = await requireUser();
+  if (!idSchema.safeParse(automationId).success) return { error: "Invalid automation." };
+
+  const raw = formData.get("values");
+  if (typeof raw !== "string" || raw.length > 500_000) return { error: "Invalid payload values." };
+
+  let parsedValues: unknown;
+  try {
+    parsedValues = JSON.parse(raw);
+  } catch {
+    return { error: "Invalid payload values." };
+  }
+  const values = valuesSchema.safeParse(parsedValues);
+  if (!values.success) return { error: "Invalid payload values." };
+
+  const loaded = await loadCurrent(user.teamId, automationId);
+  if (!loaded) return { error: "Automation not found or has no published version." };
+
+  let changed = false;
+  const fields = loaded.definition.fields.map((field) => {
+    if (field.secret || !(field.key in values.data)) return field;
+    const next = coerceDefault(field, values.data[field.key] ?? "");
+    if (JSON.stringify(next) !== JSON.stringify(field.defaultValue)) changed = true;
+    return { ...field, defaultValue: next };
+  });
+
+  if (!changed) return { success: "No changes to save." };
+
+  let updated: AutomationDefinition;
+  try {
+    updated = parseDefinition({ ...loaded.definition, fields });
+  } catch (error) {
+    return { error: issuesText(error) };
+  }
+
+  let versionNumber: number;
+  try {
+    versionNumber = await saveVersion(loaded.automationId, updated);
+  } catch {
+    return { error: "Could not save the payload defaults. Please try again." };
+  }
+
+  revalidatePath(`/dashboard/automations/${loaded.automationId}`);
+  revalidatePath("/dashboard/automations");
+  return { success: `Saved payload defaults as version ${versionNumber}.` };
+}
+
+export async function convertFillToPayloadAction(
+  automationId: string,
+  stepId: string,
+): Promise<void> {
+  const user = await requireUser();
+  if (!idSchema.safeParse(automationId).success || !idSchema.safeParse(stepId).success) return;
+
+  const loaded = await loadCurrent(user.teamId, automationId);
+  if (!loaded) return;
+
+  const found = findStepById(loaded.definition.steps, stepId);
+  if (!found || found.type !== "fill" || found.value.mode === "field") return;
+  const step = found as FillStep;
+
+  const result = fillToPayload(loaded.definition.fields, step, {
+    label: step.label,
+    type: inferPayloadFieldType(step.label),
+  });
+  const steps = updateStepById(loaded.definition.steps, stepId, () => result.step);
+
+  let updated: AutomationDefinition;
+  try {
+    updated = parseDefinition({ ...loaded.definition, fields: result.fields, steps });
+  } catch {
+    return;
+  }
+
+  await saveVersion(loaded.automationId, updated).catch(() => undefined);
+  revalidatePath(`/dashboard/automations/${loaded.automationId}`);
+  revalidatePath("/dashboard/automations");
+}
+
+export async function convertFillToCredentialAction(
+  automationId: string,
+  stepId: string,
+): Promise<void> {
+  const user = await requireUser();
+  if (!idSchema.safeParse(automationId).success || !idSchema.safeParse(stepId).success) return;
+
+  const loaded = await loadCurrent(user.teamId, automationId);
+  if (!loaded) return;
+
+  const found = findStepById(loaded.definition.steps, stepId);
+  if (!found || found.type !== "fill") return;
+  const step = found as FillStep;
+
+  const result = fillToCredential(loaded.definition.fields, step, {
+    label: step.label,
+    type: "password",
+  });
+  const steps = updateStepById(loaded.definition.steps, stepId, () => result.step);
+
+  let updated: AutomationDefinition;
+  try {
+    updated = parseDefinition({ ...loaded.definition, fields: result.fields, steps });
+  } catch {
+    return;
+  }
+
+  await saveVersion(loaded.automationId, updated).catch(() => undefined);
+  revalidatePath(`/dashboard/automations/${loaded.automationId}`);
+  revalidatePath("/dashboard/automations");
+}
+
+export async function moveFieldToCredentialsAction(
+  automationId: string,
+  fieldKey: string,
+): Promise<void> {
+  const user = await requireUser();
+  if (!idSchema.safeParse(automationId).success || !idSchema.safeParse(fieldKey).success) return;
+
+  const loaded = await loadCurrent(user.teamId, automationId);
+  if (!loaded) return;
+
+  const field = loaded.definition.fields.find((item) => item.key === fieldKey);
+  if (!field || field.secret) return;
+
+  const fields = loaded.definition.fields.map((item) =>
+    item.key === fieldKey ? { ...item, secret: true, required: true, defaultValue: undefined } : item,
+  );
+
+  let updated: AutomationDefinition;
+  try {
+    updated = parseDefinition({ ...loaded.definition, fields });
+  } catch {
+    return;
+  }
+
+  await saveVersion(loaded.automationId, updated).catch(() => undefined);
+  revalidatePath(`/dashboard/automations/${loaded.automationId}`);
+  revalidatePath("/dashboard/automations");
+}
+
+export async function saveCredentialsAction(
+  automationId: string,
+  _previousState: FieldPanelState,
+  formData: FormData,
+): Promise<FieldPanelState> {
+  void _previousState;
+  const user = await requireUser();
+  if (!idSchema.safeParse(automationId).success) return { error: "Invalid automation." };
+
+  const loaded = await loadCurrent(user.teamId, automationId);
+  if (!loaded) return { error: "Automation not found or has no published version." };
+
+  const secretFields = new Map(
+    loaded.definition.fields.filter((field) => field.secret).map((field) => [field.key, field]),
+  );
+
+  const entries: { fieldKey: string; value: string }[] = [];
+  for (const [name, value] of formData.entries()) {
+    if (!name.startsWith("credential:") || typeof value !== "string") continue;
+    const fieldKey = name.slice("credential:".length);
+    if (!secretFields.has(fieldKey)) {
+      return { error: `Field "${fieldKey}" is not a credential.` };
+    }
+    if (value.length > 50_000) return { error: `Credential "${fieldKey}" is too long.` };
+    if (value.trim() !== "") entries.push({ fieldKey, value });
+  }
+
+  if (entries.length === 0) return { success: "No credential values to save." };
+
+  try {
+    for (const entry of entries) {
+      const encrypted = encryptSecret(entry.value);
+      await prisma.secret.upsert({
+        where: {
+          automationId_fieldKey: { automationId: loaded.automationId, fieldKey: entry.fieldKey },
+        },
+        create: {
+          teamId: user.teamId,
+          automationId: loaded.automationId,
+          fieldKey: entry.fieldKey,
+          ...encrypted,
+        },
+        update: { ...encrypted },
+      });
+    }
+  } catch {
+    return { error: "Could not save the credentials. Please try again." };
+  }
+
+  revalidatePath(`/dashboard/automations/${loaded.automationId}`);
+  return { success: `Saved ${entries.length} credential(s).` };
+}
+
+export async function deleteCredentialAction(automationId: string, fieldKey: string): Promise<void> {
+  const user = await requireUser();
+  if (!idSchema.safeParse(automationId).success || !idSchema.safeParse(fieldKey).success) return;
+
+  const loaded = await loadCurrent(user.teamId, automationId);
+  if (!loaded) return;
+  const field = loaded.definition.fields.find((item) => item.key === fieldKey);
+  if (!field?.secret) return;
+
+  await prisma.secret
+    .deleteMany({ where: { automationId: loaded.automationId, fieldKey } })
+    .catch(() => undefined);
+  revalidatePath(`/dashboard/automations/${loaded.automationId}`);
+}
