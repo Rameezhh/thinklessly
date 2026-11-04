@@ -52,6 +52,21 @@ export const fillValueSchema = z.discriminatedUnion("mode", [
 ]);
 export type FillValue = z.infer<typeof fillValueSchema>;
 
+export const fieldRefSchema = z.object({ mode: z.literal("field"), key: fieldKeySchema });
+export type FieldRef = z.infer<typeof fieldRefSchema>;
+
+export const selectValueSchema = z.union([z.string(), fillValueSchema]);
+export type SelectValue = z.infer<typeof selectValueSchema>;
+
+export const checkValueSchema = z.union([z.boolean(), fieldRefSchema]);
+export type CheckValue = z.infer<typeof checkValueSchema>;
+
+export function valueFieldKey(value: FillValue | SelectValue | CheckValue): string | null {
+  return typeof value === "object" && value !== null && "mode" in value && value.mode === "field"
+    ? value.key
+    : null;
+}
+
 const stepBase = {
   id: z.string().min(1, "Step id is required"),
   enabled: z.boolean().default(true),
@@ -83,14 +98,14 @@ const selectStepSchema = z.object({
   ...stepBase,
   type: z.literal("select"),
   selectors: selectorsSchema,
-  value: z.string(),
+  value: selectValueSchema,
 });
 
 const checkStepSchema = z.object({
   ...stepBase,
   type: z.literal("check"),
   selectors: selectorsSchema,
-  checked: z.boolean(),
+  checked: checkValueSchema,
 });
 
 const uploadStepSchema = z.object({
@@ -361,6 +376,24 @@ export function validateFieldReferences(definition: AutomationDefinition): Field
         stepId: step.id,
         message: `Step "${step.id}" references missing field "${step.value.key}"`,
       });
+    }
+    if (step.type === "select") {
+      const key = valueFieldKey(step.value);
+      if (key && !fieldKeys.has(key)) {
+        issues.push({
+          stepId: step.id,
+          message: `Step "${step.id}" references missing field "${key}"`,
+        });
+      }
+    }
+    if (step.type === "check") {
+      const key = valueFieldKey(step.checked);
+      if (key && !fieldKeys.has(key)) {
+        issues.push({
+          stepId: step.id,
+          message: `Step "${step.id}" references missing field "${key}"`,
+        });
+      }
     }
     if (step.type === "upload" && !fieldKeys.has(step.fieldKey)) {
       issues.push({

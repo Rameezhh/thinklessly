@@ -12,7 +12,16 @@ import {
   type Field,
   type Step,
 } from "@shared/definition";
-import { fillToCredential, fillToPayload, inferPayloadFieldType, type FillStep } from "@shared/fields";
+import {
+  autoPayloadFields,
+  createField,
+  fieldsUsedBySteps,
+  fillToCredential,
+  fillToPayload,
+  inferPayloadFieldType,
+  removeField,
+  type FillStep,
+} from "@shared/fields";
 import { toJson } from "@shared/json";
 import { encryptSecret } from "@shared/secrets";
 import { findAutomation } from "./ownership";
@@ -302,6 +311,140 @@ export async function reorderStepsAction(automationId: string, orderedIds: strin
   let updated: AutomationDefinition;
   try {
     updated = parseDefinition({ ...loaded.definition, steps });
+  } catch {
+    return;
+  }
+
+  await saveVersion(loaded.automationId, updated).catch(() => undefined);
+  revalidatePath(`/dashboard/automations/${loaded.automationId}`);
+  revalidatePath("/dashboard/automations");
+}
+
+const fieldTypeSchema = z.enum([
+  "text",
+  "password",
+  "email",
+  "number",
+  "file",
+  "select",
+  "checkbox",
+]);
+
+const addFieldSchema = z.object({
+  label: z.string().trim().min(1, "Label is required").max(80, "Label is too long"),
+  key: z.string().trim().max(60).optional(),
+  type: fieldTypeSchema,
+  defaultValue: z.string().max(50_000).optional(),
+  description: z.string().trim().max(300).optional(),
+});
+
+function addDefaultValue(type: Field["type"], raw: string | undefined): Field["defaultValue"] {
+  if (raw === undefined) return undefined;
+  if (type === "checkbox") return raw === "on" || raw === "true";
+  if (type === "file") return undefined;
+  if (type === "number") {
+    if (raw.trim() === "") return undefined;
+    const number = Number(raw);
+    return Number.isFinite(number) ? number : undefined;
+  }
+  if (raw === "") return undefined;
+  return raw;
+}
+
+export async function addFieldAction(
+  automationId: string,
+  kind: "payload" | "credential",
+  _previousState: FieldPanelState,
+  formData: FormData,
+): Promise<FieldPanelState> {
+  void _previousState;
+  const user = await requireUser();
+  if (!idSchema.safeParse(automationId).success) return { error: "Invalid automation." };
+
+  const parsed = addFieldSchema.safeParse({
+    label: formData.get("label"),
+    key: typeof formData.get("key") === "string" ? formData.get("key") : undefined,
+    type: formData.get("type"),
+    defaultValue: typeof formData.get("defaultValue") === "string" ? formData.get("defaultValue") : undefined,
+    description: typeof formData.get("description") === "string" ? formData.get("description") : undefined,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid field details." };
+  }
+
+  const loaded = await loadCurrent(user.teamId, automationId);
+  if (!loaded) return { error: "Automation not found or has no published version." };
+
+  const secret = kind === "credential";
+  const result = createField(loaded.definition.fields, {
+    label: parsed.data.label,
+    key: parsed.data.key || undefined,
+    type: secret ? (parsed.data.type === "file" ? "password" : parsed.data.type) : parsed.data.type,
+    secret,
+    required: secret ? true : formData.get("required") === "on",
+    defaultValue: secret ? undefined : addDefaultValue(parsed.data.type, parsed.data.defaultValue),
+    description: parsed.data.description || undefined,
+  });
+
+  let updated: AutomationDefinition;
+  try {
+    updated = parseDefinition({ ...loaded.definition, fields: result.fields });
+  } catch (error) {
+    return { error: issuesText(error) };
+  }
+
+  let versionNumber: number;
+  try {
+    versionNumber = await saveVersion(loaded.automationId, updated);
+  } catch {
+    return { error: "Could not add the field. Please try again." };
+  }
+
+  revalidatePath(`/dashboard/automations/${loaded.automationId}`);
+  revalidatePath("/dashboard/automations");
+  return {
+    success: `${secret ? "Credential" : "Payload"} field "${result.field.key}" added as version ${versionNumber}.`,
+  };
+}
+
+export async function deleteFieldAction(automationId: string, fieldKey: string): Promise<void> {
+  const user = await requireUser();
+  if (!idSchema.safeParse(automationId).success || !idSchema.safeParse(fieldKey).success) return;
+
+  const loaded = await loadCurrent(user.teamId, automationId);
+  if (!loaded) return;
+  if (!loaded.definition.fields.some((field) => field.key === fieldKey)) return;
+  if (fieldsUsedBySteps(loaded.definition.steps).includes(fieldKey)) return;
+
+  const fields = removeField(loaded.definition.fields, fieldKey);
+  let updated: AutomationDefinition;
+  try {
+    updated = parseDefinition({ ...loaded.definition, fields });
+  } catch {
+    return;
+  }
+
+  await saveVersion(loaded.automationId, updated).catch(() => undefined);
+  await prisma.secret
+    .deleteMany({ where: { automationId: loaded.automationId, fieldKey } })
+    .catch(() => undefined);
+  revalidatePath(`/dashboard/automations/${loaded.automationId}`);
+  revalidatePath("/dashboard/automations");
+}
+
+export async function autoPayloadAction(automationId: string): Promise<void> {
+  const user = await requireUser();
+  if (!idSchema.safeParse(automationId).success) return;
+
+  const loaded = await loadCurrent(user.teamId, automationId);
+  if (!loaded) return;
+
+  const result = autoPayloadFields(loaded.definition.fields, loaded.definition.steps);
+  if (result.fields === loaded.definition.fields && result.steps === loaded.definition.steps) return;
+
+  let updated: AutomationDefinition;
+  try {
+    updated = parseDefinition({ ...loaded.definition, fields: result.fields, steps: result.steps });
   } catch {
     return;
   }

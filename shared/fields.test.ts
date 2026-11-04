@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { FillStep } from "./fields";
 import {
   autoPayloadFields,
+  createField,
   fieldsUsedBySteps,
   fillToCredential,
   fillToPayload,
   markFieldSecret,
   normalizeFieldKey,
+  removeField,
   setFieldDefault,
   uniqueFieldKey,
 } from "./fields";
@@ -125,6 +127,36 @@ describe("autoPayloadFields", () => {
     expect(result.steps).toBe(steps);
   });
 
+  it("turns recorded selects and checkboxes into payload defaults", () => {
+    const result = autoPayloadFields([], [
+      {
+        id: "select",
+        type: "select",
+        enabled: true,
+        optional: false,
+        selectors: [{ kind: "css", value: "select[name=country]" }],
+        value: "US",
+        label: "Select Country",
+      },
+      {
+        id: "check",
+        type: "check",
+        enabled: true,
+        optional: false,
+        selectors: [{ kind: "css", value: "input[name=terms]" }],
+        checked: true,
+        label: "Check Terms",
+      },
+    ]);
+
+    expect(result.fields).toEqual([
+      expect.objectContaining({ key: "select_country", type: "select", defaultValue: "US" }),
+      expect.objectContaining({ key: "check_terms", type: "checkbox", defaultValue: true }),
+    ]);
+    expect(result.steps[0]).toMatchObject({ value: { mode: "field", key: "select_country" } });
+    expect(result.steps[1]).toMatchObject({ checked: { mode: "field", key: "check_terms" } });
+  });
+
   it("reuses an existing field instead of creating a duplicate", () => {
     const fields = [
       {
@@ -143,6 +175,34 @@ describe("autoPayloadFields", () => {
 });
 
 describe("field helpers", () => {
+  it("creates arbitrary payload and credential fields with unique keys", () => {
+    const payload = createField([], { label: "Order ID", type: "text", defaultValue: "abc" });
+    expect(payload.field).toMatchObject({
+      key: "order_id",
+      label: "Order ID",
+      secret: false,
+      required: false,
+      defaultValue: "abc",
+    });
+
+    const credential = createField(payload.fields, {
+      label: "API token",
+      type: "password",
+      secret: true,
+      defaultValue: "ignored",
+    });
+    expect(credential.field).toMatchObject({
+      key: "api_token",
+      secret: true,
+      required: true,
+    });
+    expect(credential.field.defaultValue).toBeUndefined();
+
+    const duplicate = createField(credential.fields, { label: "Order ID", type: "text" });
+    expect(duplicate.field.key).toBe("order_id_2");
+    expect(removeField(duplicate.fields, "order_id")).toHaveLength(2);
+  });
+
   it("sets defaults without touching other fields", () => {
     const fields = [
       { key: "a", label: "A", type: "text" as const, secret: false, required: true },

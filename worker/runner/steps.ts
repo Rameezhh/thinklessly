@@ -1,7 +1,7 @@
 import { mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { Locator } from "playwright";
-import type { Selector, Step } from "@shared/definition";
+import type { CheckValue, FillValue, Selector, SelectValue, Step } from "@shared/definition";
 import { resolveLocator } from "./selectors";
 import { extractStructured } from "./structured";
 import { blockedFromStatus, detectBlocked, type BlockedInfo } from "./blocked";
@@ -11,14 +11,17 @@ export type StepOutcome = { blocked?: BlockedInfo };
 
 const hasOwn = (value: object, key: string) => Object.prototype.hasOwnProperty.call(value, key);
 
-function resolveInputValue(key: string, ctx: StepContext): { value: string; secret: boolean } {
+export function resolveInputValue(key: string, ctx: StepContext): { value: string; secret: boolean } {
   const field = ctx.definition.fields.find((item) => item.key === key);
 
   if (hasOwn(ctx.secrets, key)) {
     return { value: String(ctx.secrets[key] ?? ""), secret: true };
   }
   if (hasOwn(ctx.inputs, key)) {
-    return { value: String(ctx.inputs[key] ?? ""), secret: field?.secret ?? false };
+    const raw = ctx.inputs[key];
+    if (raw !== "" && raw !== null && raw !== undefined) {
+      return { value: String(raw), secret: field?.secret ?? false };
+    }
   }
   if (field?.defaultValue !== undefined) {
     return { value: String(field.defaultValue), secret: field.secret };
@@ -27,6 +30,18 @@ function resolveInputValue(key: string, ctx: StepContext): { value: string; secr
     throw new Error(`Missing required input "${key}"`);
   }
   return { value: "", secret: field?.secret ?? false };
+}
+
+function resolveTextValue(value: FillValue | SelectValue | string, ctx: StepContext): string {
+  if (typeof value === "string") return value;
+  if (value.mode === "literal") return value.text;
+  return resolveInputValue(value.key, ctx).value;
+}
+
+function resolveCheckedValue(value: CheckValue, ctx: StepContext): boolean {
+  if (typeof value === "boolean") return value;
+  const raw = resolveInputValue(value.key, ctx).value.toLowerCase();
+  return raw === "true" || raw === "on" || raw === "1" || raw === "yes";
 }
 
 async function readText(locator: Locator): Promise<string> {
@@ -79,19 +94,21 @@ export async function executeStep(step: Step, ctx: StepContext): Promise<StepOut
 
     case "select": {
       const { locator } = await resolve(step.selectors);
-      await locator.selectOption(step.value, { timeout: ctx.timeout });
+      const value = resolveTextValue(step.value, ctx);
+      await locator.selectOption(value, { timeout: ctx.timeout });
       await log("info", "Selected option");
       break;
     }
 
     case "check": {
       const { locator } = await resolve(step.selectors);
-      if (step.checked) {
+      const checked = resolveCheckedValue(step.checked, ctx);
+      if (checked) {
         await locator.check({ timeout: ctx.timeout });
       } else {
         await locator.uncheck({ timeout: ctx.timeout });
       }
-      await log("info", `Checkbox set to ${step.checked}`);
+      await log("info", `Checkbox set to ${checked}`);
       break;
     }
 

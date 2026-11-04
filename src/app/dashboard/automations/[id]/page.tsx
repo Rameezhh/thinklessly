@@ -10,6 +10,8 @@ import {
   type AutomationDefinition,
   type Step,
 } from "@shared/definition";
+import { autoPayloadAction } from "@/lib/automation-field-actions";
+import { Button } from "@/components/ui/button";
 import { CredentialsPanel } from "@/components/automations/credentials-panel";
 import { DefinitionView } from "@/components/automations/definition-view";
 import { OutputsPanel } from "@/components/automations/outputs-panel";
@@ -74,6 +76,15 @@ async function AutomationContent({ params }: { params: Promise<{ id: string }> }
         error instanceof DefinitionError ? error.issues.join("\n") : "The stored definition is invalid.";
     }
   }
+
+  const needsAutoPayload = Boolean(
+    definition?.steps.some((step) => {
+      if (step.type === "fill") return step.value.mode === "literal" && step.value.text.length > 0;
+      if (step.type === "select") return typeof step.value === "string" || step.value.mode === "literal";
+      if (step.type === "check") return typeof step.checked === "boolean";
+      return false;
+    }),
+  );
 
   const extractionSteps = definition
     ? definition.steps.filter(
@@ -146,10 +157,24 @@ async function AutomationContent({ params }: { params: Promise<{ id: string }> }
                 </section>
               </aside>
             </div>
+            {needsAutoPayload ? (
+              <form action={autoPayloadAction.bind(null, automation.id)}>
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200/70 bg-indigo-50/60 px-4 py-3 dark:border-indigo-900/50 dark:bg-indigo-950/30">
+                  <p className="text-sm text-indigo-900 dark:text-indigo-200">
+                    Some recorded inputs are still fixed values. Move them to the payload so they can be
+                    overridden at run time.
+                  </p>
+                  <Button type="submit" size="sm">
+                    Add recorded values to payload
+                  </Button>
+                </div>
+              </form>
+            ) : null}
             <PayloadPanel
               key={`payload-${automation.currentVersion.id}`}
               automationId={automation.id}
               fields={definition.fields}
+              steps={definition.steps}
             />
             <OutputsPanel
               key={automation.currentVersion.id}
@@ -160,6 +185,7 @@ async function AutomationContent({ params }: { params: Promise<{ id: string }> }
               key={`credentials-${automation.currentVersion.id}`}
               automationId={automation.id}
               fields={definition.fields}
+              steps={definition.steps}
               savedSecretKeys={savedSecrets.map((secret) => secret.fieldKey)}
             />
             <TriggersPanel

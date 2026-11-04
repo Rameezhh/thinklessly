@@ -173,6 +173,15 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
         setSnapshot((current) => ({ ...current, steps: [...current.steps, message.step as Step] }));
         return;
       }
+      if (message.type === "step-updated" && message.step) {
+        setSnapshot((current) => ({
+          ...current,
+          steps: current.steps.map((step) =>
+            step.id === (message.step as Step).id ? (message.step as Step) : step,
+          ),
+        }));
+        return;
+      }
       if (message.type === "preview" && message.stepId) {
         setSnapshot((current) => ({
           ...current,

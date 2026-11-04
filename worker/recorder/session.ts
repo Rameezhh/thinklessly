@@ -1,11 +1,13 @@
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import { z } from "zod";
 import { isHttpUrl, selectorSchema, type Field, type Selector, type Step } from "@shared/definition";
+import { autoPayloadFields } from "@shared/fields";
 import type { WebSocket } from "ws";
 import { extractStructured } from "../runner/structured";
 import { resolveLocator } from "../runner/selectors";
 import { buildCaptureStep } from "./capture";
 import { buildInferScript } from "./infer";
+import { mergeRecordedStep } from "./merge";
 import { buildRecorderScript } from "./script";
 import { buildSectionsScript } from "./sections";
 import { buildToolbarScript } from "./toolbar";
@@ -196,6 +198,11 @@ export class RecorderSession {
     await this.browser?.close().catch(() => undefined);
     this.context = null;
     this.browser = null;
+
+    const normalized = autoPayloadFields(this.fields, this.steps);
+    this.fields = normalized.fields;
+    this.steps = normalized.steps;
+
     this.status = "stopped";
     this.broadcast({ type: "stopped", ...this.snapshot() });
     return this.snapshot();
@@ -261,11 +268,16 @@ export class RecorderSession {
   }
 
   private pushStep(step: NewStep): Step | null {
-    if (this.steps.length >= MAX_STEPS) return null;
     const full = this.materializeStep(step);
-    this.steps.push(full);
-    this.broadcast({ type: "step", step: full });
-    return full;
+    const result = mergeRecordedStep(this.steps, full);
+    const isNew = !result.updated;
+
+    if (isNew && this.steps.length >= MAX_STEPS) return null;
+
+    this.steps = result.steps;
+    const merged = this.steps.find((entry) => entry.id === result.stepId) ?? full;
+    this.broadcast(isNew ? { type: "step", step: merged } : { type: "step-updated", step: merged });
+    return merged;
   }
 
   private removeCaptureStep(selectionId: string): void {

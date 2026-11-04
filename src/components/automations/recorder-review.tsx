@@ -22,8 +22,14 @@ function stepDetail(step: Step): string {
     if (step.value.mode === "field") return `field: ${step.value.key}`;
     return step.value.text ? `"${step.value.text}"` : "empty value";
   }
-  if (step.type === "select") return step.value || "empty value";
-  if (step.type === "check") return step.checked ? "checked" : "unchecked";
+  if (step.type === "select") {
+    if (typeof step.value === "string") return step.value || "empty value";
+    return step.value.mode === "field" ? `field: ${step.value.key}` : step.value.text || "empty value";
+  }
+  if (step.type === "check") {
+    if (typeof step.checked === "boolean") return step.checked ? "checked" : "unchecked";
+    return `field: ${step.checked.key}`;
+  }
   if (step.type === "upload") return `field: ${step.fieldKey}`;
   if (step.type === "press") return step.key;
   if (step.type === "extract") return `output: ${step.outputKey}`;

@@ -20,9 +20,17 @@ function stepDetail(step: Step): string | null {
     case "fill":
       return step.value.mode === "field" ? `field: ${step.value.key}` : step.value.text;
     case "select":
-      return step.value;
+      return typeof step.value === "string"
+        ? step.value
+        : step.value.mode === "field"
+          ? `field: ${step.value.key}`
+          : step.value.text;
     case "check":
-      return step.checked ? "checked" : "unchecked";
+      return typeof step.checked === "boolean"
+        ? step.checked
+          ? "checked"
+          : "unchecked"
+        : `field: ${step.checked.key}`;
     case "upload":
       return `field: ${step.fieldKey}`;
     case "press":

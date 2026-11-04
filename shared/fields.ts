@@ -1,6 +1,53 @@
-import { updateStepById, walkSteps, type Field, type Step } from "./definition";
+import {
+  updateStepById,
+  valueFieldKey,
+  walkSteps,
+  type Field,
+  type Step,
+} from "./definition";
 
 export type FillStep = Extract<Step, { type: "fill" }>;
+export type SelectStep = Extract<Step, { type: "select" }>;
+export type CheckStep = Extract<Step, { type: "check" }>;
+
+export type NewFieldInput = {
+  label: string;
+  key?: string;
+  type: Field["type"];
+  secret?: boolean;
+  required?: boolean;
+  defaultValue?: Field["defaultValue"];
+  description?: string;
+};
+
+export type CreateFieldResult = {
+  fields: Field[];
+  field: Field;
+};
+
+export function createField(fields: Field[], input: NewFieldInput): CreateFieldResult {
+  const key = uniqueFieldKey(input.key || input.label, fields.map((field) => field.key));
+  const secret = input.secret ?? false;
+  const field: Field = {
+    key,
+    label: input.label,
+    type: input.type,
+    secret,
+    required: secret ? true : (input.required ?? false),
+    ...(secret
+      ? {}
+      : input.defaultValue !== undefined
+        ? { defaultValue: input.defaultValue }
+        : {}),
+    ...(input.description ? { description: input.description } : {}),
+  };
+
+  return { fields: [...fields, field], field };
+}
+
+export function removeField(fields: Field[], key: string): Field[] {
+  return fields.filter((field) => field.key !== key);
+}
 
 export type FieldChange = {
   fields: Field[];
@@ -112,6 +159,54 @@ export type AutoPayloadResult = {
   steps: Step[];
 };
 
+type EnsuredField = {
+  fields: Field[];
+  key: string;
+  changed: boolean;
+};
+
+function ensurePayloadField(
+  fields: Field[],
+  source: string,
+  label: string,
+  type: Field["type"],
+  defaultValue: Field["defaultValue"],
+  required: boolean,
+): EnsuredField {
+  const suggested = normalizeFieldKey(source, "input");
+  const existing = fields.find((field) => field.key === suggested && !field.secret);
+  if (existing) {
+    if (existing.defaultValue === undefined && defaultValue !== undefined) {
+      return {
+        fields: fields.map((field) =>
+          field.key === existing.key ? { ...field, defaultValue, required } : field,
+        ),
+        key: existing.key,
+        changed: true,
+      };
+    }
+    return { fields, key: existing.key, changed: false };
+  }
+
+  const key = uniqueFieldKey(
+    suggested,
+    fields.map((field) => field.key),
+  );
+  const field: Field = {
+    key,
+    label: label || key,
+    type,
+    secret: false,
+    required,
+    ...(defaultValue !== undefined ? { defaultValue } : {}),
+  };
+  return { fields: [...fields, field], key, changed: true };
+}
+
+/**
+ * Moves every recorded input step (fill, select, check, upload) into the payload
+ * while keeping the recorded value as an optional default.
+ */
 export function autoPayloadFields(fields: Field[], steps: Step[]): AutoPayloadResult {
   let nextFields = fields;
   let nextSteps = steps;
@@ -120,50 +215,85 @@ export function autoPayloadFields(fields: Field[], steps: Step[]): AutoPayloadRe
 
   walkSteps(steps, (step) => {
     if (step.type === "fill" && step.value.mode === "literal") {
-      const suggested = normalizeFieldKey(step.label ?? step.id, "input");
-      const existing = nextFields.find((field) => field.key === suggested);
-      if (existing) {
-        if (!existing.secret && existing.defaultValue === undefined) {
-          nextFields = setFieldDefault(nextFields, existing.key, step.value.text).map((field) =>
-            field.key === existing.key ? { ...field, required: false } : field,
-          );
-          fieldsChanged = true;
-        }
-        nextSteps = updateStepById(nextSteps, step.id, () => ({
-          ...step,
-          value: { mode: "field", key: existing.key },
-        }));
-        stepsChanged = true;
-        return;
-      }
+      if (step.value.text.length === 0) return;
+      const ensured = ensurePayloadField(
+        nextFields,
+        step.label ?? step.id,
+        step.label ?? step.id,
+        inferPayloadFieldType(step.label),
+        step.value.text,
+        false,
+      );
+      if (ensured.changed) fieldsChanged = true;
+      nextFields = ensured.fields;
+      nextSteps = updateStepById(nextSteps, step.id, () => ({
+        ...step,
+        value: { mode: "field", key: ensured.key },
+      }));
+      stepsChanged = true;
+      return;
+    }
 
-      const result = fillToPayload(nextFields, step, {
-        label: step.label,
-        type: inferPayloadFieldType(step.label),
-      });
-      if (result.fields !== nextFields) {
-        nextFields = result.fields;
-        fieldsChanged = true;
-      }
-      if (result.step !== step) {
-        nextSteps = updateStepById(nextSteps, step.id, () => result.step);
-        stepsChanged = true;
-      }
+    if (step.type === "select") {
+      const key = valueFieldKey(step.value);
+      if (key) return;
+      const text =
+        typeof step.value === "string"
+          ? step.value
+          : step.value.mode === "literal"
+            ? step.value.text
+            : "";
+      const ensured = ensurePayloadField(
+        nextFields,
+        step.label ?? step.id,
+        step.label ?? step.id,
+        "select",
+        text,
+        false,
+      );
+      if (ensured.changed) fieldsChanged = true;
+      nextFields = ensured.fields;
+      nextSteps = updateStepById(nextSteps, step.id, () => ({
+        ...step,
+        value: { mode: "field", key: ensured.key },
+      }));
+      stepsChanged = true;
+      return;
+    }
+
+    if (step.type === "check") {
+      const key = valueFieldKey(step.checked);
+      if (key) return;
+      const checked = step.checked as boolean;
+      const ensured = ensurePayloadField(
+        nextFields,
+        step.label ?? step.id,
+        step.label ?? step.id,
+        "checkbox",
+        checked,
+        false,
+      );
+      if (ensured.changed) fieldsChanged = true;
+      nextFields = ensured.fields;
+      nextSteps = updateStepById(nextSteps, step.id, () => ({
+        ...step,
+        checked: { mode: "field", key: ensured.key },
+      }));
+      stepsChanged = true;
       return;
     }
 
     if (step.type === "upload" && !nextFields.some((field) => field.key === step.fieldKey)) {
-      nextFields = [
-        ...nextFields,
-        {
-          key: step.fieldKey,
-          label: step.label?.replace(/^Upload\s+/i, "") || step.fieldKey,
-          type: "file",
-          secret: false,
-          required: true,
-        },
-      ];
-      fieldsChanged = true;
+      const ensured = ensurePayloadField(
+        nextFields,
+        step.fieldKey,
+        step.label?.replace(/^Upload\s+/i, "") || step.fieldKey,
+        "file",
+        undefined,
+        true,
+      );
+      if (ensured.changed) fieldsChanged = true;
+      nextFields = ensured.fields;
     }
   });
 
@@ -175,6 +305,14 @@ export function fieldsUsedBySteps(steps: Step[]): string[] {
   const keys = new Set<string>();
   walkSteps(steps, (step) => {
     if (step.type === "fill" && step.value.mode === "field") keys.add(step.value.key);
+    if (step.type === "select") {
+      const key = valueFieldKey(step.value);
+      if (key) keys.add(key);
+    }
+    if (step.type === "check") {
+      const key = valueFieldKey(step.checked);
+      if (key) keys.add(key);
+    }
     if (step.type === "upload") keys.add(step.fieldKey);
   });
   return [...keys];
