@@ -161,14 +161,15 @@ export function recorderInitScript() {
       }
       const className = stableClass(current);
       let part = tag;
-      if (className) {
-        part += `.${escapeValue(className)}`;
-      } else {
-        const parent: Element | null = current.parentElement;
-        if (parent) {
-          const siblings = Array.from(parent.children).filter((child: Element) => child.tagName === current.tagName);
-          if (siblings.length > 1) part += `:nth-of-type(${siblings.indexOf(current) + 1})`;
-        }
+      if (className) part += `.${escapeValue(className)}`;
+
+      const parent: Element | null = current.parentElement;
+      if (parent) {
+        const sameTag = Array.from(parent.children).filter((child: Element) => child.tagName === current.tagName);
+        const ambiguous = className
+          ? sameTag.filter((child: Element) => child.classList.contains(className)).length > 1
+          : sameTag.length > 1;
+        if (ambiguous) part += `:nth-of-type(${sameTag.indexOf(current) + 1})`;
       }
       parts.unshift(part);
       node = current.parentElement;

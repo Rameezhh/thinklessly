@@ -10,8 +10,10 @@ import {
   type AutomationDefinition,
   type Step,
 } from "@shared/definition";
+import { CredentialsPanel } from "@/components/automations/credentials-panel";
 import { DefinitionView } from "@/components/automations/definition-view";
 import { OutputsPanel } from "@/components/automations/outputs-panel";
+import { PayloadPanel } from "@/components/automations/payload-panel";
 import { RunForm } from "@/components/automations/run-form";
 import { TriggersPanel, type TriggerRow } from "@/components/automations/triggers-panel";
 import { PageLoading } from "@/components/dashboard/page-loading";
@@ -129,7 +131,7 @@ async function AutomationContent({ params }: { params: Promise<{ id: string }> }
         ) : definition ? (
           <>
             <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
-              <DefinitionView definition={definition} />
+              <DefinitionView automationId={automation.id} definition={definition} />
               <aside className="lg:sticky lg:top-6 lg:self-start">
                 <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                   <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Run now</h2>
@@ -144,10 +146,21 @@ async function AutomationContent({ params }: { params: Promise<{ id: string }> }
                 </section>
               </aside>
             </div>
+            <PayloadPanel
+              key={`payload-${automation.currentVersion.id}`}
+              automationId={automation.id}
+              fields={definition.fields}
+            />
             <OutputsPanel
               key={automation.currentVersion.id}
               automationId={automation.id}
               steps={extractionSteps}
+            />
+            <CredentialsPanel
+              key={`credentials-${automation.currentVersion.id}`}
+              automationId={automation.id}
+              fields={definition.fields}
+              savedSecretKeys={savedSecrets.map((secret) => secret.fieldKey)}
             />
             <TriggersPanel
               automationId={automation.id}

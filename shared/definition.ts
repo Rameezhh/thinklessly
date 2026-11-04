@@ -372,3 +372,15 @@ export function validateFieldReferences(definition: AutomationDefinition): Field
 
   return issues;
 }
+
+export function findStepById(steps: Step[], stepId: string): Step | undefined {
+  return steps.find((step) => step.id === stepId);
+}
+
+export function updateStepById(steps: Step[], stepId: string, update: (step: Step) => Step): Step[] {
+  return steps.map((step) => (step.id === stepId ? update(step) : step));
+}
+
+export function walkSteps(steps: Step[], visit: (step: Step) => void): void {
+  for (const step of steps) visit(step);
+}

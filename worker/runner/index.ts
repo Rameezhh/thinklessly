@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import { redactSecrets } from "@shared/redact";
 import { detectBlocked } from "./blocked";
+import { dismissObstructions, stepTargetsObstruction } from "./obstruction";
 import { executeStep } from "./steps";
 import type { RunArtifactInfo, RunOptions, RunResult, StepContext } from "./types";
 
@@ -84,44 +85,62 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
 
       await log("info", `Step ${step.id}: ${step.label ?? step.type}`, step.id);
 
-      try {
-        const stepContext: StepContext = {
-          page,
-          definition,
-          settings,
-          inputs,
-          secrets,
-          outputs,
-          artifacts,
-          runDir,
-          timeout: step.timeoutMs ?? settings.stepTimeoutMs,
-          log,
-        };
-        const outcome = await executeStep(step, stepContext);
+      const stepContext: StepContext = {
+        page,
+        definition,
+        settings,
+        inputs,
+        secrets,
+        outputs,
+        artifacts,
+        runDir,
+        timeout: step.timeoutMs ?? settings.stepTimeoutMs,
+        log,
+      };
 
-        if (outcome.blocked?.blocked) {
-          const reason = outcome.blocked.reason ?? "Human verification required";
-          await log("warn", `${reason}. Human help is required.`, step.id);
-          return { status: "NEEDS_HUMAN", outputs, artifacts, error: reason, failedStepId: step.id };
+      if (!stepTargetsObstruction(step)) {
+        await dismissObstructions(page, log, step.id).catch(() => false);
+      }
+
+      let attempt = 0;
+      for (;;) {
+        try {
+          const outcome = await executeStep(step, stepContext);
+
+          if (outcome.blocked?.blocked) {
+            const reason = outcome.blocked.reason ?? "Human verification required";
+            await log("warn", `${reason}. Human help is required.`, step.id);
+            return { status: "NEEDS_HUMAN", outputs, artifacts, error: reason, failedStepId: step.id };
+          }
+
+          await log("info", `Step ${step.id}: done`, step.id);
+          break;
+        } catch (error) {
+          const message = redactSecrets(errorMessage(error), secrets);
+          const blocked = await detectBlocked(page);
+
+          if (blocked.blocked) {
+            const reason = blocked.reason ?? "Human verification required";
+            await log("warn", `${reason}. Human help is required.`, step.id);
+            return { status: "NEEDS_HUMAN", outputs, artifacts, error: reason, failedStepId: step.id };
+          }
+
+          if (attempt === 0) {
+            const cleared = await dismissObstructions(page, log, step.id).catch(() => false);
+            if (cleared) {
+              await log("warn", "Cleared an unexpected popup; retrying the step.", step.id);
+              attempt += 1;
+              continue;
+            }
+          }
+
+          if (step.optional) {
+            await log("warn", `Optional step failed and was skipped: ${message}`, step.id);
+            break;
+          }
+
+          throw new Error(`Step "${step.id}" failed: ${message}`);
         }
-
-        await log("info", `Step ${step.id}: done`, step.id);
-      } catch (error) {
-        const message = redactSecrets(errorMessage(error), secrets);
-        const blocked = await detectBlocked(page);
-
-        if (blocked.blocked) {
-          const reason = blocked.reason ?? "Human verification required";
-          await log("warn", `${reason}. Human help is required.`, step.id);
-          return { status: "NEEDS_HUMAN", outputs, artifacts, error: reason, failedStepId: step.id };
-        }
-
-        if (step.optional) {
-          await log("warn", `Optional step failed and was skipped: ${message}`, step.id);
-          continue;
-        }
-
-        throw new Error(`Step "${step.id}" failed: ${message}`);
       }
     }
 

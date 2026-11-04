@@ -10,6 +10,7 @@ import {
   updateStepById,
   type AutomationDefinition,
   type Field,
+  type Step,
 } from "@shared/definition";
 import { fillToCredential, fillToPayload, inferPayloadFieldType, type FillStep } from "@shared/fields";
 import { toJson } from "@shared/json";
@@ -215,6 +216,92 @@ export async function moveFieldToCredentialsAction(
   let updated: AutomationDefinition;
   try {
     updated = parseDefinition({ ...loaded.definition, fields });
+  } catch {
+    return;
+  }
+
+  await saveVersion(loaded.automationId, updated).catch(() => undefined);
+  revalidatePath(`/dashboard/automations/${loaded.automationId}`);
+  revalidatePath("/dashboard/automations");
+}
+
+export async function setStepOptionalAction(
+  automationId: string,
+  stepId: string,
+  optional: boolean,
+): Promise<void> {
+  const user = await requireUser();
+  if (!idSchema.safeParse(automationId).success || !idSchema.safeParse(stepId).success) return;
+
+  const loaded = await loadCurrent(user.teamId, automationId);
+  if (!loaded) return;
+  if (!findStepById(loaded.definition.steps, stepId)) return;
+
+  const steps = updateStepById(loaded.definition.steps, stepId, (step) => ({ ...step, optional }));
+
+  let updated: AutomationDefinition;
+  try {
+    updated = parseDefinition({ ...loaded.definition, steps });
+  } catch {
+    return;
+  }
+
+  await saveVersion(loaded.automationId, updated).catch(() => undefined);
+  revalidatePath(`/dashboard/automations/${loaded.automationId}`);
+  revalidatePath("/dashboard/automations");
+}
+
+export async function setFieldRequiredAction(
+  automationId: string,
+  fieldKey: string,
+  required: boolean,
+): Promise<void> {
+  const user = await requireUser();
+  if (!idSchema.safeParse(automationId).success || !idSchema.safeParse(fieldKey).success) return;
+
+  const loaded = await loadCurrent(user.teamId, automationId);
+  if (!loaded) return;
+  if (!loaded.definition.fields.some((field) => field.key === fieldKey)) return;
+
+  const fields = loaded.definition.fields.map((field) =>
+    field.key === fieldKey ? { ...field, required } : field,
+  );
+
+  let updated: AutomationDefinition;
+  try {
+    updated = parseDefinition({ ...loaded.definition, fields });
+  } catch {
+    return;
+  }
+
+  await saveVersion(loaded.automationId, updated).catch(() => undefined);
+  revalidatePath(`/dashboard/automations/${loaded.automationId}`);
+  revalidatePath("/dashboard/automations");
+}
+
+export async function reorderStepsAction(automationId: string, orderedIds: string[]): Promise<void> {
+  const user = await requireUser();
+  if (!idSchema.safeParse(automationId).success) return;
+  const order = z.array(idSchema).safeParse(orderedIds);
+  if (!order.success) return;
+
+  const loaded = await loadCurrent(user.teamId, automationId);
+  if (!loaded) return;
+
+  const byId = new Map(loaded.definition.steps.map((step) => [step.id, step]));
+  if (byId.size !== order.data.length || order.data.some((id) => !byId.has(id))) return;
+
+  const steps: Step[] = [];
+  for (const id of order.data) {
+    const step = byId.get(id);
+    if (!step) return;
+    steps.push(step);
+    byId.delete(id);
+  }
+
+  let updated: AutomationDefinition;
+  try {
+    updated = parseDefinition({ ...loaded.definition, steps });
   } catch {
     return;
   }

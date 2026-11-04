@@ -13,6 +13,7 @@ type Snapshot = {
   fields: Field[];
   steps: Step[];
   previews: Record<string, unknown>;
+  previewTotals: Record<string, number>;
 };
 
 const initialState: ImportAutomationState = {};
@@ -26,7 +27,14 @@ const primaryButton =
 const secondaryButton =
   "rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900";
 
-const emptySnapshot: Snapshot = { startUrl: "", captureData: true, fields: [], steps: [], previews: {} };
+const emptySnapshot: Snapshot = {
+  startUrl: "",
+  captureData: true,
+  fields: [],
+  steps: [],
+  previews: {},
+  previewTotals: {},
+};
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong.";
@@ -72,6 +80,38 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
     };
   }, [base]);
 
+  useEffect(() => {
+    if (phase !== "recording" || !sessionId) return;
+    let cancelled = false;
+
+    async function sync() {
+      try {
+        const response = await fetch(`${base}/sessions/${sessionId}`);
+        if (!response.ok) return;
+        const data = (await response.json().catch(() => ({}))) as Partial<Snapshot>;
+        if (cancelled) return;
+        setSnapshot((current) => {
+          const serverSteps = Array.isArray(data.steps) ? data.steps : null;
+          return {
+            ...current,
+            fields: Array.isArray(data.fields) ? data.fields : current.fields,
+            steps: serverSteps && serverSteps.length >= current.steps.length ? serverSteps : current.steps,
+            previews: data.previews ?? current.previews,
+            previewTotals: data.previewTotals ?? current.previewTotals,
+          };
+        });
+      } catch {
+        // The live socket or the next poll will recover.
+      }
+    }
+
+    const timer = window.setInterval(() => void sync(), 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [phase, sessionId, base]);
+
   const outputIssues = useMemo(() => outputIssuesForSteps(snapshot.steps), [snapshot.steps]);
 
   const definitionJson = useMemo(() => {
@@ -106,8 +146,10 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
         step?: Step;
         stepId?: string;
         preview?: unknown;
+        total?: number;
         error?: string;
         previews?: Record<string, unknown>;
+        previewTotals?: Record<string, number>;
       };
       try {
         message = JSON.parse(String(event.data)) as typeof message;
@@ -122,6 +164,7 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
           fields: message.fields ?? [],
           steps: message.steps ?? [],
           previews: message.previews ?? {},
+          previewTotals: message.previewTotals ?? {},
         });
         if (message.status === "stopped") setPhase("stopped");
         return;
@@ -134,6 +177,10 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
         setSnapshot((current) => ({
           ...current,
           previews: { ...current.previews, [message.stepId as string]: message.preview },
+          previewTotals:
+            typeof message.total === "number"
+              ? { ...current.previewTotals, [message.stepId as string]: message.total }
+              : current.previewTotals,
         }));
         return;
       }
@@ -148,6 +195,7 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
           fields: message.fields ?? current.fields,
           steps: message.steps ?? current.steps,
           previews: message.previews ?? current.previews,
+          previewTotals: message.previewTotals ?? current.previewTotals,
         }));
         setPhase("stopped");
       }
@@ -231,6 +279,7 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
         fields: Array.isArray(data.fields) ? data.fields : [],
         steps: Array.isArray(data.steps) ? data.steps : [],
         previews: data.previews ?? {},
+        previewTotals: data.previewTotals ?? {},
       });
       setPhase("stopped");
       closeSocket();
@@ -427,6 +476,7 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
           steps={snapshot.steps}
           fields={snapshot.fields}
           previews={snapshot.previews}
+          previewTotals={snapshot.previewTotals}
           editable={phase === "stopped"}
           onChange={(steps) => setSnapshot((current) => ({ ...current, steps }))}
         />

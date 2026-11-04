@@ -8,6 +8,7 @@ type Props = {
   steps: Step[];
   fields: Field[];
   previews: Record<string, unknown>;
+  previewTotals?: Record<string, number>;
   editable: boolean;
   onChange: (steps: Step[]) => void;
 };
@@ -32,7 +33,8 @@ function stepDetail(step: Step): string {
   if (step.type === "assert") return [step.kind, step.value].filter(Boolean).join(" ");
   if ("selectors" in step && step.selectors?.[0]) {
     const selector = step.selectors[0];
-    return `${selector.kind}: ${selector.value}`.slice(0, 100);
+    const name = selector.name ? ` "${selector.name}"` : "";
+    return `${selector.kind}: ${selector.value}${name}`.slice(0, 140);
   }
   return step.type;
 }
@@ -67,7 +69,7 @@ function SingleKeyEditor({
   );
 }
 
-export function RecorderReview({ steps, fields, previews, editable, onChange }: Props) {
+export function RecorderReview({ steps, fields, previews, previewTotals, editable, onChange }: Props) {
   const issues = outputIssuesForSteps(steps);
 
   return (
@@ -104,6 +106,9 @@ export function RecorderReview({ steps, fields, previews, editable, onChange }: 
         <ol className="mt-4 max-h-[36rem] space-y-2 overflow-auto pr-1">
           {steps.map((step, index) => {
             const preview = step.type === "extractStructured" ? previews[step.id] : undefined;
+            const previewTotal = step.type === "extractStructured" ? previewTotals?.[step.id] : undefined;
+            const itemCount =
+              previewTotal ?? (Array.isArray(preview) ? preview.length : undefined);
             return (
               <li
                 key={step.id}
@@ -113,7 +118,7 @@ export function RecorderReview({ steps, fields, previews, editable, onChange }: 
                   <span className="mt-0.5 w-6 shrink-0 text-right text-xs text-zinc-400">{index + 1}</span>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                      <span className="min-w-0 break-words font-medium text-zinc-900 dark:text-zinc-100">
                         {step.label ?? step.type}
                       </span>
                       <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
@@ -150,11 +155,15 @@ export function RecorderReview({ steps, fields, previews, editable, onChange }: 
                         {preview !== undefined ? (
                           <details className="mt-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
                             <summary className="cursor-pointer text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                              Sample data from the page
+                              Sample JSON from the page
+                              {itemCount !== undefined ? ` (${itemCount} item${itemCount === 1 ? "" : "s"})` : ""}
                             </summary>
-                            <pre className="mt-2 max-h-48 overflow-auto font-mono text-[11px] leading-relaxed text-zinc-700 dark:text-zinc-300">
+                            <pre className="mt-2 max-h-[28rem] overflow-auto rounded-md border border-zinc-200 bg-zinc-50 p-3 font-mono text-[11px] leading-relaxed text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
                               {JSON.stringify(preview, null, 2)}
                             </pre>
+                            <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+                              This is the full data captured for this step. Each run reads it fresh from the page.
+                            </p>
                           </details>
                         ) : editable ? (
                           <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">

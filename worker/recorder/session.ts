@@ -1,12 +1,13 @@
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import { z } from "zod";
-import { isHttpUrl, selectorSchema, type Field, type Step } from "@shared/definition";
+import { isHttpUrl, selectorSchema, type Field, type Selector, type Step } from "@shared/definition";
 import type { WebSocket } from "ws";
 import { extractStructured } from "../runner/structured";
 import { resolveLocator } from "../runner/selectors";
 import { buildCaptureStep } from "./capture";
 import { buildInferScript } from "./infer";
 import { buildRecorderScript } from "./script";
+import { buildSectionsScript } from "./sections";
 import { buildToolbarScript } from "./toolbar";
 
 const MAX_STEPS = 250;
@@ -21,6 +22,11 @@ const elementSchema = z.object({
   tag: z.string().max(40).default(""),
   inputType: z.string().max(40).default(""),
   fieldKey: z.string().max(60).default(""),
+});
+
+const captureEnvelopeSchema = z.object({
+  payload: z.unknown(),
+  selectionId: z.string().max(100).optional(),
 });
 
 const eventSchema = z.discriminatedUnion("kind", [
@@ -47,6 +53,7 @@ type SessionSnapshot = {
   fields: Field[];
   steps: Step[];
   previews: Record<string, unknown>;
+  previewTotals: Record<string, number>;
 };
 
 type DraftStep<T> = T extends Step
@@ -56,6 +63,14 @@ type NewStep = DraftStep<Step>;
 
 function safeLabel(value: string): string {
   return value.replace(/\s+/g, " ").trim().slice(0, 120);
+}
+
+function isTransientElement(name: string, selectors: Selector[]): boolean {
+  const haystack = `${name} ${selectors
+    .map((selector) => `${selector.kind} ${selector.value} ${selector.name ?? ""}`)
+    .join(" ")}`.toLowerCase();
+  if (/(overlay|modal|backdrop|popup|dialog)/.test(haystack)) return true;
+  return /(^|[\s_-])(close|dismiss|not now|no thanks|maybe later|got it)([\s_-]|$)/.test(haystack);
 }
 
 function fieldKeyBase(value: string, fallback: string): string {
@@ -78,12 +93,14 @@ export class RecorderSession {
   private clients = new Set<WebSocket>();
   private fields: Field[] = [];
   private steps: Step[] = [];
+  private captureStepIds = new Map<string, string>();
   private nextStepNumber = 1;
   private lastNavigationUrl = "";
   private lastInteractionAt = 0;
   private pendingNavigationUrl = "";
   private navigationTimer: ReturnType<typeof setTimeout> | undefined;
   private previews: Record<string, unknown> = {};
+  private previewTotals: Record<string, number> = {};
 
   constructor(id: string, startUrl: string, options: { captureData?: boolean } = {}) {
     this.id = id;
@@ -102,9 +119,12 @@ export class RecorderSession {
       await this.context.exposeBinding("__webtomateCapture", (source, payload) => {
         void this.handleCapture(payload, source.page);
       });
+      await this.context.exposeBinding("__webtomateRemove", (_source, selectionId) => {
+        if (typeof selectionId === "string") this.removeCaptureStep(selectionId);
+      });
     }
     const scripts = [buildRecorderScript()];
-    if (this.captureData) scripts.push(buildInferScript(), buildToolbarScript());
+    if (this.captureData) scripts.push(buildInferScript(), buildSectionsScript(), buildToolbarScript());
     await this.context.addInitScript({ content: scripts.join("\n") });
 
     this.browser.on("disconnected", () => {
@@ -135,6 +155,7 @@ export class RecorderSession {
       fields: this.fields,
       steps: this.steps,
       previews: this.previews,
+      previewTotals: this.previewTotals,
     };
   }
 
@@ -203,7 +224,7 @@ export class RecorderSession {
 
   private async ensureRecorderScripts(page: Page): Promise<void> {
     if (!this.captureData) return;
-    for (const content of [buildRecorderScript(), buildInferScript(), buildToolbarScript()]) {
+    for (const content of [buildRecorderScript(), buildInferScript(), buildSectionsScript(), buildToolbarScript()]) {
       try {
         await page.evaluate(content);
       } catch {
@@ -230,21 +251,39 @@ export class RecorderSession {
     this.pushStep({ type: "goto", url, label: `Go to ${url}` });
   }
 
-  private pushStep(step: NewStep): Step | null {
-    if (this.steps.length >= MAX_STEPS) return null;
-    const full = {
+  private materializeStep(step: NewStep): Step {
+    return {
       ...step,
       id: step.id ?? `step-${this.nextStepNumber++}`,
       enabled: step.enabled ?? true,
       optional: step.optional ?? false,
     } as Step;
+  }
+
+  private pushStep(step: NewStep): Step | null {
+    if (this.steps.length >= MAX_STEPS) return null;
+    const full = this.materializeStep(step);
     this.steps.push(full);
     this.broadcast({ type: "step", step: full });
     return full;
   }
 
-  private async handleCapture(payload: unknown, page: Page): Promise<void> {
+  private removeCaptureStep(selectionId: string): void {
+    const stepId = this.captureStepIds.get(selectionId);
+    if (!stepId) return;
+    this.captureStepIds.delete(selectionId);
+    this.steps = this.steps.filter((step) => step.id !== stepId);
+    delete this.previews[stepId];
+    delete this.previewTotals[stepId];
+    this.broadcast({ type: "snapshot", ...this.snapshot() });
+  }
+
+  private async handleCapture(input: unknown, page: Page): Promise<void> {
     if (this.status !== "recording") return;
+    const envelope = captureEnvelopeSchema.safeParse(input);
+    const payload = envelope.success ? envelope.data.payload : input;
+    const selectionId = envelope.success ? envelope.data.selectionId : undefined;
+
     const result = buildCaptureStep(payload, this.steps);
     if (!result.ok) {
       this.broadcast({ type: "capture-error", error: result.error });
@@ -257,13 +296,16 @@ export class RecorderSession {
       this.broadcast({ type: "capture-error", error: `Step limit of ${MAX_STEPS} reached.` });
       return;
     }
+    if (selectionId) this.captureStepIds.set(selectionId, step.id);
 
     if (step.type !== "extractStructured") return;
     try {
       const { locator } = await resolveLocator(page, step.selectors, 3000, () => undefined, step.id);
-      const preview = await extractStructured(locator, step.root, { maxItems: 3, maxText: 200 });
-      this.previews[step.id] = preview;
-      this.broadcast({ type: "preview", stepId: step.id, preview });
+      const full = await extractStructured(locator, step.root, { maxItems: 500, maxText: 1000 });
+      const total = Array.isArray(full) ? full.length : undefined;
+      this.previews[step.id] = full;
+      if (typeof total === "number") this.previewTotals[step.id] = total;
+      this.broadcast({ type: "preview", stepId: step.id, preview: full, total });
     } catch {
       this.broadcast({ type: "preview", stepId: step.id, preview: null });
     }
@@ -303,66 +345,53 @@ export class RecorderSession {
     const name = safeLabel(element.name) || element.tag || "element";
     this.lastInteractionAt = Date.now();
 
+    const step = this.buildEventStep(event, element, name);
+    if (!step) return;
+    this.pushStep(step);
+  }
+
+  private buildEventStep(
+    event: z.infer<typeof eventSchema>,
+    element: z.infer<typeof elementSchema>,
+    name: string,
+  ): NewStep | null {
     switch (event.kind) {
       case "click": {
-        this.pushStep({ type: "click", selectors: element.selectors, label: `Click ${name}` });
-        return;
+        const optional = isTransientElement(name, element.selectors);
+        return { type: "click", selectors: element.selectors, label: `Click ${name}`, optional };
       }
       case "fill": {
         if (event.secret) {
           const key = this.ensureField(element.fieldKey, name, "password", true);
-          this.pushStep({
+          return {
             type: "fill",
             selectors: element.selectors,
             value: { mode: "field", key },
             label: `Fill ${name} (secret)`,
-          });
-          return;
+          };
         }
-        this.pushStep({
+        return {
           type: "fill",
           selectors: element.selectors,
           value: { mode: "literal", text: event.value },
           label: `Fill ${name}`,
-        });
-        return;
+        };
       }
-      case "select": {
-        this.pushStep({
-          type: "select",
-          selectors: element.selectors,
-          value: event.value,
-          label: `Select ${name}`,
-        });
-        return;
-      }
-      case "check": {
-        this.pushStep({
+      case "select":
+        return { type: "select", selectors: element.selectors, value: event.value, label: `Select ${name}` };
+      case "check":
+        return {
           type: "check",
           selectors: element.selectors,
           checked: event.checked,
           label: `${event.checked ? "Check" : "Uncheck"} ${name}`,
-        });
-        return;
-      }
+        };
       case "upload": {
         const key = this.ensureField(element.fieldKey, name, "file", false);
-        this.pushStep({
-          type: "upload",
-          selectors: element.selectors,
-          fieldKey: key,
-          label: `Upload ${name}`,
-        });
-        return;
+        return { type: "upload", selectors: element.selectors, fieldKey: key, label: `Upload ${name}` };
       }
-      case "press": {
-        this.pushStep({
-          type: "press",
-          selectors: element.selectors,
-          key: event.key,
-          label: `Press ${event.key}`,
-        });
-      }
+      case "press":
+        return { type: "press", selectors: element.selectors, key: event.key, label: `Press ${event.key}` };
     }
   }
 

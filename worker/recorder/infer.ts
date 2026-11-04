@@ -34,10 +34,14 @@ export function inferInitScript() {
 
   function uniqueKey(base: string, used: Set<string>): string {
     const key = normalizeKey(base, "field");
-    if (!used.has(key)) return key;
+    let candidate = key;
     let suffix = 2;
-    while (used.has(`${key}_${suffix}`)) suffix += 1;
-    return `${key}_${suffix}`;
+    while (used.has(candidate)) {
+      candidate = `${key}_${suffix}`;
+      suffix += 1;
+    }
+    used.add(candidate);
+    return candidate;
   }
 
   function tagOf(el: Element): string {

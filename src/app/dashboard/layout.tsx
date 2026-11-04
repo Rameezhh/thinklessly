@@ -9,7 +9,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-6">
             <Link href="/dashboard" className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-              Webtomate
+              Thinklessly
             </Link>
             <nav className="flex items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400">
               <Link className="transition-colors hover:text-zinc-900 dark:hover:text-zinc-100" href="/dashboard">
