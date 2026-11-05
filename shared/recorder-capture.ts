@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { extractFieldSchema, selectorSchema, type Step } from "@shared/definition";
-import { normalizeOutputKey, uniqueOutputKey, validateStructuredField } from "@shared/outputs";
+import { extractFieldSchema, selectorSchema, type Step } from "./definition";
+import { normalizeOutputKey, uniqueOutputKey, validateStructuredField } from "./outputs";
 
 const captureElementSchema = z.object({
   selectors: z.array(selectorSchema).min(1).max(20),

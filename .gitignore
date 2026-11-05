@@ -38,6 +38,9 @@ yarn-error.log*
 /data/*
 !/data/.gitkeep
 
+# generated live proxy vendor assets (built by scripts/build-live.ts)
+/public/live/vendor/
+
 # vercel
 .vercel
 

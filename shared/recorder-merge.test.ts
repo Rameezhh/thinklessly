@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Step } from "@shared/definition";
-import { mergeRecordedStep } from "./merge";
+import type { Step } from "./definition";
+import { mergeRecordedStep } from "./recorder-merge";
 
 function fill(id: string, text: string, value = "input[name=email]"): Step {
   return {

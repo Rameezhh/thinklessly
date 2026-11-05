@@ -3,11 +3,14 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { RecorderPanel } from "@/components/automations/recorder-panel";
 import { PageLoading } from "@/components/dashboard/page-loading";
+import { LiveRecorder } from "@/components/live/live-recorder";
 import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = {
   title: "Create automation | Webtomate",
 };
+
+const liveRecorder = process.env.LIVE_RECORDER !== "false";
 
 export default function CreateAutomationPage() {
   return (
@@ -19,6 +22,29 @@ export default function CreateAutomationPage() {
 
 async function CreateAutomationContent() {
   await requireUser();
+
+  if (liveRecorder) {
+    return (
+      <main className="mx-auto w-full max-w-7xl px-4 py-10">
+        <div className="space-y-6">
+          <div>
+            <Link
+              href="/dashboard/automations"
+              className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              ← Automations
+            </Link>
+            <h1 className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Create automation</h1>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Enter the starting URL, use the live site and floating toolbar, then click End automation.
+            </p>
+          </div>
+          <LiveRecorder initialUrl="" />
+        </div>
+      </main>
+    );
+  }
+
   const recorderPort = process.env.RECORDER_PORT ?? "4001";
 
   return (

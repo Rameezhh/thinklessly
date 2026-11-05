@@ -1,4 +1,4 @@
-import type { Step } from "@shared/definition";
+import type { Step } from "./definition";
 
 export type MergeResult = {
   steps: Step[];

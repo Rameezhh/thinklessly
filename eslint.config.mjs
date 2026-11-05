@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored third-party proxy assets (copied by scripts/build-live.ts).
+    "public/live/vendor/**",
+    // Untracked duplicate checkout.
+    "thinklessly/**",
   ]),
 ]);
 

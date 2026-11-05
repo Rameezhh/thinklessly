@@ -1,0 +1,4 @@
+$ pnpm ensure:data
+$ node -e "require('fs').mkdirSync('data',{recursive:true})"
+$ concurrently -k -n web,worker -c cyan,magenta "pnpm dev:web" "pnpm dev:worker"
+[ELIFECYCLE] Command failed with exit code 1.

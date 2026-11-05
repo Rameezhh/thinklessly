@@ -1,13 +1,12 @@
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import { z } from "zod";
-import { isHttpUrl, selectorSchema, type Field, type Selector, type Step } from "@shared/definition";
+import { isHttpUrl, type Field, type Step } from "@shared/definition";
 import { autoPayloadFields } from "@shared/fields";
+import { RecorderCore } from "@shared/recorder-core";
 import type { WebSocket } from "ws";
 import { extractStructured } from "../runner/structured";
 import { resolveLocator } from "../runner/selectors";
-import { buildCaptureStep } from "./capture";
 import { buildInferScript } from "./infer";
-import { mergeRecordedStep } from "./merge";
 import { buildRecorderScript } from "./script";
 import { buildSectionsScript } from "./sections";
 import { buildToolbarScript } from "./toolbar";
@@ -16,34 +15,10 @@ const MAX_STEPS = 250;
 const NAVIGATION_DELAY_MS = 500;
 const NAVIGATION_AFTER_EVENT_MS = 5000;
 
-const selectorListSchema = z.array(selectorSchema).min(1).max(20);
-
-const elementSchema = z.object({
-  selectors: selectorListSchema,
-  name: z.string().max(200).default(""),
-  tag: z.string().max(40).default(""),
-  inputType: z.string().max(40).default(""),
-  fieldKey: z.string().max(60).default(""),
-});
-
 const captureEnvelopeSchema = z.object({
   payload: z.unknown(),
   selectionId: z.string().max(100).optional(),
 });
-
-const eventSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("click"), element: elementSchema }),
-  z.object({
-    kind: z.literal("fill"),
-    element: elementSchema,
-    value: z.string().max(50_000).default(""),
-    secret: z.boolean().default(false),
-  }),
-  z.object({ kind: z.literal("select"), element: elementSchema, value: z.string().max(10_000) }),
-  z.object({ kind: z.literal("check"), element: elementSchema, checked: z.boolean() }),
-  z.object({ kind: z.literal("upload"), element: elementSchema }),
-  z.object({ kind: z.literal("press"), element: elementSchema, key: z.string().min(1).max(40) }),
-]);
 
 type RecorderStatus = "starting" | "recording" | "stopping" | "stopped";
 
@@ -58,32 +33,6 @@ type SessionSnapshot = {
   previewTotals: Record<string, number>;
 };
 
-type DraftStep<T> = T extends Step
-  ? Omit<T, "id" | "enabled" | "optional"> & Partial<Pick<T, "id" | "enabled" | "optional">>
-  : never;
-type NewStep = DraftStep<Step>;
-
-function safeLabel(value: string): string {
-  return value.replace(/\s+/g, " ").trim().slice(0, 120);
-}
-
-function isTransientElement(name: string, selectors: Selector[]): boolean {
-  const haystack = `${name} ${selectors
-    .map((selector) => `${selector.kind} ${selector.value} ${selector.name ?? ""}`)
-    .join(" ")}`.toLowerCase();
-  if (/(overlay|modal|backdrop|popup|dialog)/.test(haystack)) return true;
-  return /(^|[\s_-])(close|dismiss|not now|no thanks|maybe later|got it)([\s_-]|$)/.test(haystack);
-}
-
-function fieldKeyBase(value: string, fallback: string): string {
-  const key = value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 40);
-  return /^[a-z]/.test(key) ? key : fallback;
-}
-
 export class RecorderSession {
   readonly id: string;
   readonly startUrl: string;
@@ -93,10 +42,7 @@ export class RecorderSession {
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
   private clients = new Set<WebSocket>();
-  private fields: Field[] = [];
-  private steps: Step[] = [];
-  private captureStepIds = new Map<string, string>();
-  private nextStepNumber = 1;
+  private core = new RecorderCore(MAX_STEPS);
   private lastNavigationUrl = "";
   private lastInteractionAt = 0;
   private pendingNavigationUrl = "";
@@ -140,11 +86,7 @@ export class RecorderSession {
     await page.goto(this.startUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await this.ensureRecorderScripts(page);
     this.lastNavigationUrl = page.url();
-    this.pushStep({
-      type: "goto",
-      url: this.startUrl,
-      label: `Go to ${this.startUrl}`,
-    });
+    this.pushStep({ type: "goto", url: this.startUrl, label: `Go to ${this.startUrl}` });
     this.status = "recording";
   }
 
@@ -154,8 +96,8 @@ export class RecorderSession {
       status: this.status,
       startUrl: this.startUrl,
       captureData: this.captureData,
-      fields: this.fields,
-      steps: this.steps,
+      fields: this.core.fields,
+      steps: this.core.steps,
       previews: this.previews,
       previewTotals: this.previewTotals,
     };
@@ -199,9 +141,9 @@ export class RecorderSession {
     this.context = null;
     this.browser = null;
 
-    const normalized = autoPayloadFields(this.fields, this.steps);
-    this.fields = normalized.fields;
-    this.steps = normalized.steps;
+    const normalized = autoPayloadFields(this.core.fields, this.core.steps);
+    this.core.fields = normalized.fields;
+    this.core.steps = normalized.steps;
 
     this.status = "stopped";
     this.broadcast({ type: "stopped", ...this.snapshot() });
@@ -258,33 +200,16 @@ export class RecorderSession {
     this.pushStep({ type: "goto", url, label: `Go to ${url}` });
   }
 
-  private materializeStep(step: NewStep): Step {
-    return {
-      ...step,
-      id: step.id ?? `step-${this.nextStepNumber++}`,
-      enabled: step.enabled ?? true,
-      optional: step.optional ?? false,
-    } as Step;
-  }
-
-  private pushStep(step: NewStep): Step | null {
-    const full = this.materializeStep(step);
-    const result = mergeRecordedStep(this.steps, full);
-    const isNew = !result.updated;
-
-    if (isNew && this.steps.length >= MAX_STEPS) return null;
-
-    this.steps = result.steps;
-    const merged = this.steps.find((entry) => entry.id === result.stepId) ?? full;
-    this.broadcast(isNew ? { type: "step", step: merged } : { type: "step-updated", step: merged });
-    return merged;
+  private pushStep(step: Parameters<RecorderCore["pushStep"]>[0]): Step | null {
+    const result = this.core.pushStep(step);
+    if (!result) return null;
+    this.broadcast(result.updated ? { type: "step-updated", step: result.step } : { type: "step", step: result.step });
+    return result.step;
   }
 
   private removeCaptureStep(selectionId: string): void {
-    const stepId = this.captureStepIds.get(selectionId);
+    const stepId = this.core.removeCapture(selectionId);
     if (!stepId) return;
-    this.captureStepIds.delete(selectionId);
-    this.steps = this.steps.filter((step) => step.id !== stepId);
     delete this.previews[stepId];
     delete this.previewTotals[stepId];
     this.broadcast({ type: "snapshot", ...this.snapshot() });
@@ -296,19 +221,17 @@ export class RecorderSession {
     const payload = envelope.success ? envelope.data.payload : input;
     const selectionId = envelope.success ? envelope.data.selectionId : undefined;
 
-    const result = buildCaptureStep(payload, this.steps);
-    if (!result.ok) {
-      this.broadcast({ type: "capture-error", error: result.error });
+    const outcome = this.core.handleCapture(payload, selectionId);
+    if (!outcome.ok) {
+      this.broadcast({ type: "capture-error", error: outcome.error });
       return;
     }
 
     this.lastInteractionAt = Date.now();
-    const step = this.pushStep(result.step);
-    if (!step) {
-      this.broadcast({ type: "capture-error", error: `Step limit of ${MAX_STEPS} reached.` });
-      return;
-    }
-    if (selectionId) this.captureStepIds.set(selectionId, step.id);
+    const step = outcome.result.step;
+    this.broadcast(
+      outcome.result.updated ? { type: "step-updated", step } : { type: "step", step },
+    );
 
     if (step.type !== "extractStructured") return;
     try {
@@ -323,88 +246,12 @@ export class RecorderSession {
     }
   }
 
-  private ensureField(keyHint: string, label: string, type: Field["type"], secret: boolean): string {
-    const fallback = type === "file" ? "upload_file" : "password";
-    const base = fieldKeyBase(keyHint, fallback);
-    const existing = this.fields.find((field) => field.key === base);
-    if (existing) return existing.key;
-
-    let key = base;
-    let suffix = 2;
-    while (this.fields.some((field) => field.key === key)) {
-      key = `${base}_${suffix}`;
-      suffix += 1;
-    }
-
-    this.fields.push({
-      key,
-      label: safeLabel(label) || (type === "file" ? "Upload file" : "Password"),
-      type,
-      secret,
-      required: true,
-    });
-    return key;
-  }
-
   private handleEvent(payload: unknown): void {
     if (this.status !== "recording") return;
-    const parsed = eventSchema.safeParse(payload);
-    if (!parsed.success) return;
-    const event = parsed.data;
-    const element = event.element;
-    if (!element.selectors.length) return;
-
-    const name = safeLabel(element.name) || element.tag || "element";
+    const result = this.core.handleEvent(payload);
+    if (!result) return;
     this.lastInteractionAt = Date.now();
-
-    const step = this.buildEventStep(event, element, name);
-    if (!step) return;
-    this.pushStep(step);
-  }
-
-  private buildEventStep(
-    event: z.infer<typeof eventSchema>,
-    element: z.infer<typeof elementSchema>,
-    name: string,
-  ): NewStep | null {
-    switch (event.kind) {
-      case "click": {
-        const optional = isTransientElement(name, element.selectors);
-        return { type: "click", selectors: element.selectors, label: `Click ${name}`, optional };
-      }
-      case "fill": {
-        if (event.secret) {
-          const key = this.ensureField(element.fieldKey, name, "password", true);
-          return {
-            type: "fill",
-            selectors: element.selectors,
-            value: { mode: "field", key },
-            label: `Fill ${name} (secret)`,
-          };
-        }
-        return {
-          type: "fill",
-          selectors: element.selectors,
-          value: { mode: "literal", text: event.value },
-          label: `Fill ${name}`,
-        };
-      }
-      case "select":
-        return { type: "select", selectors: element.selectors, value: event.value, label: `Select ${name}` };
-      case "check":
-        return {
-          type: "check",
-          selectors: element.selectors,
-          checked: event.checked,
-          label: `${event.checked ? "Check" : "Uncheck"} ${name}`,
-        };
-      case "upload": {
-        const key = this.ensureField(element.fieldKey, name, "file", false);
-        return { type: "upload", selectors: element.selectors, fieldKey: key, label: `Upload ${name}` };
-      }
-      case "press":
-        return { type: "press", selectors: element.selectors, key: event.key, label: `Press ${event.key}` };
-    }
+    this.broadcast(result.updated ? { type: "step-updated", step: result.step } : { type: "step", step: result.step });
   }
 
   private broadcast(message: Record<string, unknown>): void {

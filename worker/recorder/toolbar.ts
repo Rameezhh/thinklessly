@@ -2,6 +2,7 @@ export function toolbarInitScript() {
   type ToolbarWindow = Window & {
     __webtomateToolbarInstalled?: boolean;
     __webtomatePickMode?: boolean;
+    __webtomateAllowFrame?: boolean;
     __webtomateCapture?: (payload: unknown) => void;
     __webtomateSelectorsFor?: (el: Element) => unknown[];
     __webtomateNameOf?: (el: Element) => string;
@@ -15,7 +16,7 @@ export function toolbarInitScript() {
 
   const w = window as ToolbarWindow;
   if (w.__webtomateToolbarInstalled && document.querySelector("[data-webtomate-ui]")) return;
-  if (window.top !== window) return;
+  if (window.top !== window && !w.__webtomateAllowFrame) return;
   if (!w.__webtomateSelectorsFor) return;
   w.__webtomateToolbarInstalled = true;
 

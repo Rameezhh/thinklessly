@@ -1,0 +1,427 @@
+[web] $ next dev
+[worker] $ tsx watch worker/index.ts
+[web] ▲ Next.js 16.4.3 (Turbopack)
+[web] - Local:         http://localhost:3000
+[web] - Network:       http://192.168.1.11:3000
+[web] - Environments: .env
+[web] ✓ Ready in 1612ms
+[worker] [recorder] listening on http://127.0.0.1:4001
+[worker] [worker] started: concurrency=2, poll=1000ms, headless=false
+[web] ✓ Running next.config.ts took 186ms
+[web] - Cache Components enabled
+[web] - Partial Prefetching enabled
+[web] 
+[web]  GET /login 200 in 1219ms (next.js: 711ms, application-code: 509ms)
+[worker] [recorder] started session 5959b7af-0fb4-4af0-aaf5-23a6cb8aac8c
+[web]  GET /dashboard/automations/create 200 in 1828ms (next.js: 809ms, proxy.ts: 267ms, application-code: 752ms)
+[web] [browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+[web] 
+[web] - A server/client branch `if (typeof window !== 'undefined')`.
+[web] - Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+[web] - Date formatting in a user's locale which doesn't match the server.
+[web] - External changing data without sending a snapshot of it along with the HTML.
+[web] - Invalid HTML tag nesting.
+[web] 
+[web] It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+[web] 
+[web] https://react.dev/link/hydration-mismatch
+[web] 
+[web]   ...
+[web]     <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+[web]       <AppDevOverlayErrorBoundary globalError={[...]}>
+[web]         <ReplaySsrOnlyErrors>
+[web]         <DevRootHTTPAccessFallbackBoundary>
+[web]           <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+[web]             <HTTPAccessFallbackErrorBoundary pathname="/dashboard..." notFound={<NotAllowedRootHTTPFallbackError>} ...>
+[web]               <RedirectBoundary>
+[web]                 <RedirectErrorBoundary router={{...}}>
+[web]                   <Head>
+[web]                   <__next_root_layout_boundary__>
+[web]                     <SegmentViewNode type="layout" pagePath="layout.tsx">
+[web]                       <SegmentTrieNode>
+[web]                       <link>
+[web]                       <script>
+[web]                       <RootLayout>
+[web]                         <html lang="en" className="geist_a715...">
+[web]                           <body
+[web]                             className="min-h-full flex flex-col"
+[web] -                           cz-shortcut-listen="true"
+[web]                           >
+[web]                   ...
+[web]  
+[web]  GET /dashboard/automations/create 200 in 365ms (next.js: 48ms, proxy.ts: 44ms, application-code: 273ms)
+[web] [browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+[web] 
+[web] - A server/client branch `if (typeof window !== 'undefined')`.
+[web] - Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+[web] - Date formatting in a user's locale which doesn't match the server.
+[web] - External changing data without sending a snapshot of it along with the HTML.
+[web] - Invalid HTML tag nesting.
+[web] 
+[web] It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+[web] 
+[web] https://react.dev/link/hydration-mismatch
+[web] 
+[web]   ...
+[web]     <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+[web]       <AppDevOverlayErrorBoundary globalError={[...]}>
+[web]         <ReplaySsrOnlyErrors>
+[web]         <DevRootHTTPAccessFallbackBoundary>
+[web]           <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+[web]             <HTTPAccessFallbackErrorBoundary pathname="/dashboard..." notFound={<NotAllowedRootHTTPFallbackError>} ...>
+[web]               <RedirectBoundary>
+[web]                 <RedirectErrorBoundary router={{...}}>
+[web]                   <Head>
+[web]                   <__next_root_layout_boundary__>
+[web]                     <SegmentViewNode type="layout" pagePath="layout.tsx">
+[web]                       <SegmentTrieNode>
+[web]                       <link>
+[web]                       <script>
+[web]                       <RootLayout>
+[web]                         <html lang="en" className="geist_a715...">
+[web]                           <body
+[web]                             className="min-h-full flex flex-col"
+[web] -                           cz-shortcut-listen="true"
+[web]                           >
+[web]                   ...
+[web]  
+[worker] [recorder] started session 29d670e4-cfe2-4115-a726-02854ef3445d
+[web]  GET /dashboard/automations/cmw2icqz00001uxc0jk82fp6c 200 in 4.7s (next.js: 2.7s, proxy.ts: 12ms, generate-params: 1796ms, application-code: 157ms)
+[web]  POST /dashboard/automations/create 200 in 5.0s (next.js: 123ms, proxy.ts: 17ms, application-code: 4.8s)
+[web]   └─ ƒ importAutomationAction({}, {}) in 78ms src/lib/automation-actions.ts
+[web]  GET /dashboard/automations 200 in 806ms (next.js: 686ms, proxy.ts: 11ms, application-code: 108ms)
+[web]  GET /dashboard 200 in 199ms (next.js: 91ms, proxy.ts: 11ms, application-code: 97ms)
+[web]  GET /dashboard/automations 200 in 141ms (next.js: 54ms, proxy.ts: 9ms, application-code: 77ms)
+[web]  GET /dashboard/api 200 in 1024ms (next.js: 835ms, proxy.ts: 8ms, application-code: 181ms)
+[web]  GET /dashboard 200 in 187ms (next.js: 43ms, proxy.ts: 11ms, application-code: 134ms)
+[web]  GET /dashboard/automations/import 200 in 699ms (next.js: 579ms, proxy.ts: 9ms, application-code: 112ms)
+[web]  GET /dashboard/automations 200 in 116ms (next.js: 37ms, proxy.ts: 11ms, application-code: 68ms)
+[web]  GET /dashboard/automations/create 200 in 119ms (next.js: 14ms, proxy.ts: 7ms, application-code: 98ms)
+[web]  GET /dashboard/automations 200 in 90ms (next.js: 9ms, proxy.ts: 11ms, application-code: 70ms)
+[web]  GET /dashboard/automations/cmw2icqz00001uxc0jk82fp6c 200 in 188ms (next.js: 61ms, proxy.ts: 8ms, generate-params: 11ms, application-code: 108ms)
+[web]  POST /dashboard/automations/cmw2icqz00001uxc0jk82fp6c 200 in 233ms (next.js: 10ms, proxy.ts: 19ms, generate-params: 11ms, application-code: 194ms)
+[web]   └─ ƒ reorderStepsAction("cmw2icqz00001uxc0jk82fp6c", ["step-2","step-1","step-3"]) in 23ms src/lib/automation-field-actions.ts
+[worker] [worker] claimed run cmw2ifuvr0007uxc0rma6pbjz
+[worker] [run cmw2ifuvr0007uxc0rma6pbjz] [info] Browser started (visible)
+[worker] [run cmw2ifuvr0007uxc0rma6pbjz] [info] Starting run with 3 enabled step(s)
+[worker] [run cmw2ifuvr0007uxc0rma6pbjz] [info] [step-2] Step step-2: Click All
+[worker] [run cmw2ifuvr0007uxc0rma6pbjz] [info] [step-2] Selector 1/3 did not match (role): link
+[web]  GET /dashboard/runs/cmw2ifuvr0007uxc0rma6pbjz 200 in 4.9s (next.js: 2.8s, proxy.ts: 10ms, generate-params: 1966ms, application-code: 105ms)
+[web]  POST /dashboard/automations/cmw2icqz00001uxc0jk82fp6c 200 in 5.0s (next.js: 11ms, proxy.ts: 7ms, generate-params: 12ms, application-code: 5.0s)
+[web]   └─ ƒ startRunAction("cmw2icqz00001uxc0jk82fp6c", {}, {}) in 21ms src/lib/automation-actions.ts
+[web]  GET /dashboard/runs/cmw2ifuvr0007uxc0rma6pbjz 200 in 255ms (next.js: 17ms, proxy.ts: 10ms, generate-params: 11ms, application-code: 217ms)
+[worker] [run cmw2ifuvr0007uxc0rma6pbjz] [info] [step-2] Selector 2/3 did not match (text): All
+[web]  GET /dashboard/runs/cmw2ifuvr0007uxc0rma6pbjz 200 in 220ms (next.js: 22ms, proxy.ts: 31ms, generate-params: 0.1ms, application-code: 167ms)
+[worker] [run cmw2ifuvr0007uxc0rma6pbjz] [info] [step-2] Selector 3/3 did not match (css): body > header > div:nth-of-type(4) > div > nav > a:nth-of-type(1)
+[web]  GET /dashboard/runs/cmw2ifuvr0007uxc0rma6pbjz 200 in 176ms (next.js: 9ms, proxy.ts: 6ms, generate-params: 16ms, application-code: 145ms)
+[worker] [run cmw2ifuvr0007uxc0rma6pbjz] [error] [step-2] Step "step-2" failed: No selector matched. Tried: role:link, text:All, css:body > header > div:nth-of-type(4) > div > nav > a:nth-of-type(1)
+[worker] [worker] run cmw2ifuvr0007uxc0rma6pbjz finished with FAILED
+[web]  GET /dashboard/runs/cmw2ifuvr0007uxc0rma6pbjz 200 in 110ms (next.js: 8ms, proxy.ts: 7ms, generate-params: 0.1ms, application-code: 94ms)
+[web]  GET /api/artifacts/cmw2ig3f3000euxisnn7t0vei 200 in 1756ms (next.js: 1691ms, application-code: 65ms)
+[web]  GET /dashboard/automations/cmw2icqz00001uxc0jk82fp6c 200 in 236ms (next.js: 16ms, proxy.ts: 12ms, generate-params: 15ms, application-code: 193ms)
+[web]  POST /dashboard/automations/cmw2icqz00001uxc0jk82fp6c 200 in 423ms (next.js: 187ms, proxy.ts: 15ms, generate-params: 15ms, application-code: 205ms)
+[web]   └─ ƒ reorderStepsAction("cmw2icqz00001uxc0jk82fp6c", ["step-1","step-2","step-3"]) in 30ms src/lib/automation-field-actions.ts
+[web]  GET /dashboard/automations 200 in 99ms (next.js: 26ms, proxy.ts: 10ms, application-code: 64ms)
+[web]  GET /dashboard/automations/create 200 in 105ms (next.js: 23ms, proxy.ts: 9ms, application-code: 73ms)
+[worker] [recorder] started session 146c338c-4f94-4776-8c7f-5e9a9c96da10
+[web]  GET /dashboard/automations/cmw2inexy000buxc0f5crw2vz 200 in 212ms (next.js: 64ms, proxy.ts: 6ms, generate-params: 18ms, application-code: 124ms)
+[web]  POST /dashboard/automations/create 200 in 278ms (next.js: 7ms, proxy.ts: 9ms, application-code: 262ms)
+[web]   └─ ƒ importAutomationAction({}, {}) in 30ms src/lib/automation-actions.ts
+[web]  GET /dashboard/runs/cmw2inwdl000fuxc0cm9o6vwh 200 in 452ms (next.js: 304ms, proxy.ts: 6ms, generate-params: 15ms, application-code: 128ms)
+[web]  POST /dashboard/automations/cmw2inexy000buxc0f5crw2vz 200 in 578ms (next.js: 9ms, proxy.ts: 30ms, generate-params: 10ms, application-code: 529ms)
+[web]   └─ ƒ startRunAction("cmw2inexy000buxc0f5crw2vz", {}, {}) in 18ms src/lib/automation-actions.ts
+[worker] [worker] claimed run cmw2inwdl000fuxc0cm9o6vwh
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [info] Browser started (visible)
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [info] Starting run with 5 enabled step(s)
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [info] [step-1] Step step-1: Go to https://portal.ksadrop.com/track
+[web]  GET /dashboard/runs/cmw2inwdl000fuxc0cm9o6vwh 200 in 587ms (next.js: 292ms, proxy.ts: 10ms, generate-params: 0.1ms, application-code: 286ms)
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [info] [step-1] Navigated to https://portal.ksadrop.com/track
+[web]  GET /dashboard/runs/cmw2inwdl000fuxc0cm9o6vwh 200 in 382ms (next.js: 13ms, proxy.ts: 12ms, generate-params: 17ms, application-code: 341ms)
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [info] [step-1] Step step-1: done
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [info] [step-2] Step step-2: Fill #12962 or UTE01234...
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [info] [step-2] Selector 1/3 matched (placeholder): #12962 or UTE01234...
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [info] [step-2] Filled field "fill_12962_or_ute01234" with input value
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [info] [step-2] Step step-2: done
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [info] [step-3] Step step-3: Click Track
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [info] [step-3] Selector 1/3 matched (role): button
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [info] [step-3] Clicked using role selector
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [info] [step-3] Step step-3: done
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [info] [step-4] Step step-4: Extract 【Jeddah Dispatch Station】 Back To DS. Jeddah Dispatch Station Nov 4, 2026, 9:32 
+[web]  GET /dashboard/runs/cmw2inwdl000fuxc0cm9o6vwh 200 in 387ms (next.js: 46ms, proxy.ts: 11ms, generate-params: 0.1ms, application-code: 329ms)
+[web]  GET /dashboard/runs/cmw2inwdl000fuxc0cm9o6vwh 200 in 235ms (next.js: 20ms, proxy.ts: 11ms, generate-params: 0.1ms, application-code: 204ms)
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [info] [step-4] Selector 1/1 did not match (css): div > div > div > div:nth-of-type(4) > div:nth-of-type(2) > ol
+[web]  GET /dashboard/runs/cmw2inwdl000fuxc0cm9o6vwh 200 in 300ms (next.js: 24ms, proxy.ts: 32ms, generate-params: 16ms, application-code: 228ms)
+[worker] [run cmw2inwdl000fuxc0cm9o6vwh] [error] [step-4] Step "step-4" failed: No selector matched. Tried: css:div > div > div > div:nth-of-type(4) > div:nth-of-type(2) > ol
+[web]  GET /dashboard/runs/cmw2inwdl000fuxc0cm9o6vwh 200 in 238ms (next.js: 20ms, proxy.ts: 19ms, generate-params: 0.1ms, application-code: 199ms)
+[worker] [worker] run cmw2inwdl000fuxc0cm9o6vwh finished with FAILED
+[web]  GET /dashboard/runs/cmw2inwdl000fuxc0cm9o6vwh 200 in 158ms (next.js: 9ms, proxy.ts: 8ms, generate-params: 11ms, application-code: 130ms)
+[web]  GET /api/artifacts/cmw2io49g001buxiso45p2osv 200 in 48ms (next.js: 17ms, application-code: 31ms)
+[web]  GET /dashboard/automations/cmw2inexy000buxc0f5crw2vz 200 in 499ms (next.js: 273ms, proxy.ts: 8ms, generate-params: 10ms, application-code: 207ms)
+[web]  GET /dashboard/runs/cmw2iocaz000huxc05so8w5in 200 in 315ms (next.js: 158ms, proxy.ts: 11ms, generate-params: 17ms, application-code: 128ms)
+[web]  POST /dashboard/automations/cmw2inexy000buxc0f5crw2vz 200 in 401ms (next.js: 11ms, proxy.ts: 10ms, generate-params: 15ms, application-code: 365ms)
+[web]   └─ ƒ startRunAction("cmw2inexy000buxc0f5crw2vz", {}, {}) in 24ms src/lib/automation-actions.ts
+[worker] [worker] claimed run cmw2iocaz000huxc05so8w5in
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] Browser started (visible)
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] Starting run with 5 enabled step(s)
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-1] Step step-1: Go to https://portal.ksadrop.com/track
+[web]  GET /dashboard/runs/cmw2iocaz000huxc05so8w5in 200 in 305ms (next.js: 114ms, proxy.ts: 12ms, generate-params: 1.9ms, application-code: 177ms)
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-1] Navigated to https://portal.ksadrop.com/track
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-1] Step step-1: done
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-2] Step step-2: Fill #12962 or UTE01234...
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-2] Selector 1/3 matched (placeholder): #12962 or UTE01234...
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-2] Filled field "fill_12962_or_ute01234" with input value
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-2] Step step-2: done
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-3] Step step-3: Click Track
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-3] Selector 1/3 matched (role): button
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-3] Clicked using role selector
+[web]  GET /dashboard/runs/cmw2iocaz000huxc05so8w5in 200 in 815ms (next.js: 45ms, proxy.ts: 15ms, generate-params: 22ms, application-code: 733ms)
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-3] Step step-3: done
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-4] Step step-4: Extract 【Jeddah Dispatch Station】 Back To DS. Jeddah Dispatch Station Nov 4, 2026, 9:32 
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-4] Selector 1/1 matched (css): div > div > div > div:nth-of-type(4) > div:nth-of-type(2) > ol
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-4] Extracted structured data into "relative"
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-4] Step step-4: done
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-5] Step step-5: Extract SHIPMENT DETAILS Order # DOPU00002 Customer ??? Courier iMile Tracking # 6103126
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-5] Selector 1/1 matched (css): div:nth-of-type(2) > div > div > div > div:nth-of-type(4) > div:nth-of-type(1)
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-5] Extracted structured data into "overflow_y_auto"
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] [step-5] Step step-5: done
+[worker] [run cmw2iocaz000huxc05so8w5in] [info] Run completed successfully
+[web]  GET /dashboard/runs/cmw2iocaz000huxc05so8w5in 200 in 1294ms (next.js: 1074ms, proxy.ts: 16ms, generate-params: 0.1ms, application-code: 204ms)
+[web]  GET /dashboard/runs/cmw2iocaz000huxc05so8w5in 200 in 238ms (next.js: 32ms, proxy.ts: 9ms, generate-params: 0.1ms, application-code: 196ms)
+[worker] [worker] run cmw2iocaz000huxc05so8w5in finished with SUCCESS
+[web]  GET /dashboard/runs/cmw2iocaz000huxc05so8w5in 200 in 139ms (next.js: 8ms, proxy.ts: 5ms, generate-params: 10ms, application-code: 116ms)
+[web]  GET /dashboard/automations/cmw2inexy000buxc0f5crw2vz 200 in 261ms (next.js: 77ms, proxy.ts: 9ms, generate-params: 12ms, application-code: 164ms)
+[web]  GET /dashboard/runs/cmw2iphlr000juxc0dk2clqsr 200 in 292ms (next.js: 125ms, proxy.ts: 11ms, generate-params: 14ms, application-code: 141ms)
+[web]  POST /dashboard/automations/cmw2inexy000buxc0f5crw2vz 200 in 366ms (next.js: 11ms, proxy.ts: 12ms, generate-params: 10ms, application-code: 332ms)
+[web]   └─ ƒ startRunAction("cmw2inexy000buxc0f5crw2vz", {}, {}) in 18ms src/lib/automation-actions.ts
+[worker] [worker] claimed run cmw2iphlr000juxc0dk2clqsr
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [info] Browser started (visible)
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [info] Starting run with 5 enabled step(s)
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [info] [step-1] Step step-1: Go to https://portal.ksadrop.com/track
+[web]  GET /dashboard/runs/cmw2iphlr000juxc0dk2clqsr 200 in 399ms (next.js: 184ms, proxy.ts: 17ms, generate-params: 0.0ms, application-code: 198ms)
+[web]  GET /dashboard/runs/cmw2iphlr000juxc0dk2clqsr 200 in 372ms (next.js: 89ms, proxy.ts: 10ms, generate-params: 0.1ms, application-code: 274ms)
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [info] [step-1] Navigated to https://portal.ksadrop.com/track
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [info] [step-1] Step step-1: done
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [info] [step-2] Step step-2: Fill #12962 or UTE01234...
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [info] [step-2] Selector 1/3 matched (placeholder): #12962 or UTE01234...
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [info] [step-2] Filled field "fill_12962_or_ute01234" with input value
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [info] [step-2] Step step-2: done
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [info] [step-3] Step step-3: Click Track
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [info] [step-3] Selector 1/3 matched (role): button
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [info] [step-3] Clicked using role selector
+[web]  GET /dashboard/runs/cmw2iphlr000juxc0dk2clqsr 200 in 321ms (next.js: 21ms, proxy.ts: 13ms, generate-params: 19ms, application-code: 267ms)
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [info] [step-3] Step step-3: done
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [info] [step-4] Step step-4: Extract 【Jeddah Dispatch Station】 Back To DS. Jeddah Dispatch Station Nov 4, 2026, 9:32 
+[web]  GET /dashboard/runs/cmw2iphlr000juxc0dk2clqsr 200 in 312ms (next.js: 20ms, proxy.ts: 15ms, generate-params: 0.1ms, application-code: 277ms)
+[web]  GET /dashboard/runs/cmw2iphlr000juxc0dk2clqsr 200 in 191ms (next.js: 12ms, proxy.ts: 10ms, generate-params: 17ms, application-code: 152ms)
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [info] [step-4] Selector 1/1 did not match (css): div > div > div > div:nth-of-type(4) > div:nth-of-type(2) > ol
+[worker] [run cmw2iphlr000juxc0dk2clqsr] [error] [step-4] Step "step-4" failed: No selector matched. Tried: css:div > div > div > div:nth-of-type(4) > div:nth-of-type(2) > ol
+[web]  GET /dashboard/runs/cmw2iphlr000juxc0dk2clqsr 200 in 239ms (next.js: 17ms, proxy.ts: 10ms, generate-params: 0.1ms, application-code: 212ms)
+[worker] [worker] run cmw2iphlr000juxc0dk2clqsr finished with FAILED
+[web]  GET /dashboard/runs/cmw2iphlr000juxc0dk2clqsr 200 in 190ms (next.js: 15ms, proxy.ts: 12ms, generate-params: 15ms, application-code: 149ms)
+[web]  GET /api/artifacts/cmw2ippcy003guxisi6cirfuf 200 in 50ms (next.js: 18ms, application-code: 33ms)
+[web]  GET /api/artifacts/cmw2ippcy003guxisi6cirfuf 200 in 46ms (next.js: 17ms, application-code: 29ms)
+[web]  GET /dashboard/automations/cmw2inexy000buxc0f5crw2vz 200 in 153ms (next.js: 25ms, proxy.ts: 12ms, generate-params: 10ms, application-code: 107ms)
+[web]  GET /dashboard/automations 200 in 106ms (next.js: 18ms, proxy.ts: 10ms, application-code: 78ms)
+[web]  GET /dashboard/automations 200 in 1077ms (next.js: 546ms, proxy.ts: 38ms, application-code: 493ms)
+[web]  GET /dashboard/automations/create 200 in 397ms (next.js: 242ms, proxy.ts: 9ms, application-code: 146ms)
+[worker] [recorder] started session c4a9e664-3761-4a58-b196-7d6308fb1a51
+[web]   Reload env: .env
+[web]  GET /dashboard/automations/create 200 in 4.9s (next.js: 3.5s, proxy.ts: 1019ms, application-code: 339ms)
+[worker] [recorder] started session 386e7fdb-5d36-4c55-882e-7fb8d857ff13
+[web]  GET /dashboard/automations/create 200 in 1636ms (next.js: 92ms, proxy.ts: 19ms, application-code: 1526ms)
+[web] [browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+[web] 
+[web] - A server/client branch `if (typeof window !== 'undefined')`.
+[web] - Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+[web] - Date formatting in a user's locale which doesn't match the server.
+[web] - External changing data without sending a snapshot of it along with the HTML.
+[web] - Invalid HTML tag nesting.
+[web] 
+[web] It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+[web] 
+[web] https://react.dev/link/hydration-mismatch
+[web] 
+[web]   ...
+[web]     <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+[web]       <AppDevOverlayErrorBoundary globalError={[...]}>
+[web]         <ReplaySsrOnlyErrors>
+[web]         <DevRootHTTPAccessFallbackBoundary>
+[web]           <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+[web]             <HTTPAccessFallbackErrorBoundary pathname="/dashboard..." notFound={<NotAllowedRootHTTPFallbackError>} ...>
+[web]               <RedirectBoundary>
+[web]                 <RedirectErrorBoundary router={{...}}>
+[web]                   <Head>
+[web]                   <__next_root_layout_boundary__>
+[web]                     <SegmentViewNode type="layout" pagePath="layout.tsx">
+[web]                       <SegmentTrieNode>
+[web]                       <link>
+[web]                       <script>
+[web]                       <RootLayout>
+[web]                         <html lang="en" className="geist_a715...">
+[web]                           <body
+[web]                             className="min-h-full flex flex-col"
+[web] -                           cz-shortcut-listen="true"
+[web]                           >
+[web]                   ...
+[web]  
+[web]   Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\D:\\Rameez work\\Rameez ProjectSpace\\Thinklessly\\node_modules\\.pnpm\\next@16.4.3_@babel+core@7.2_34a0645aa4f5f00562181076b429cbff\\node_modules\\next\\dist\\client\\form.d.ts").
+[web]   Turbopack has seen frequent file updates and is waiting for the filesystem to settle (1.5s elapsed so far; last modified: "\\\\?\\D:\\Rameez work\\Rameez ProjectSpace\\Thinklessly\\node_modules\\.pnpm\\next@16.4.3_@babel+core@7.2_34a0645aa4f5f00562181076b429cbff\\node_modules\\next\\dist\\server\\lib\\params-utils.d.ts").
+[worker] [recorder] started session 4a793ed8-f988-46b8-b520-9b9bd7e1d603
+[web]  GET /dashboard/automations/create 200 in 389ms (next.js: 75ms, proxy.ts: 19ms, application-code: 295ms)
+[web] [browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+[web] 
+[web] - A server/client branch `if (typeof window !== 'undefined')`.
+[web] - Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+[web] - Date formatting in a user's locale which doesn't match the server.
+[web] - External changing data without sending a snapshot of it along with the HTML.
+[web] - Invalid HTML tag nesting.
+[web] 
+[web] It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+[web] 
+[web] https://react.dev/link/hydration-mismatch
+[web] 
+[web]   ...
+[web]     <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+[web]       <AppDevOverlayErrorBoundary globalError={[...]}>
+[web]         <ReplaySsrOnlyErrors>
+[web]         <DevRootHTTPAccessFallbackBoundary>
+[web]           <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+[web]             <HTTPAccessFallbackErrorBoundary pathname="/dashboard..." notFound={<NotAllowedRootHTTPFallbackError>} ...>
+[web]               <RedirectBoundary>
+[web]                 <RedirectErrorBoundary router={{...}}>
+[web]                   <Head>
+[web]                   <__next_root_layout_boundary__>
+[web]                     <SegmentViewNode type="layout" pagePath="layout.tsx">
+[web]                       <SegmentTrieNode>
+[web]                       <link>
+[web]                       <script>
+[web]                       <RootLayout>
+[web]                         <html lang="en" className="geist_a715...">
+[web]                           <body
+[web]                             className="min-h-full flex flex-col"
+[web] -                           cz-shortcut-listen="true"
+[web]                           >
+[web]                   ...
+[web]  
+[worker] [recorder] could not start session 1660d40f-88b9-4339-9371-df96435fbd61: page.goto: Target page, context or browser has been closed
+[worker] Call log:
+[worker] [2m  - navigating to "https://www.dopurchase.com/en", waiting until "domcontentloaded"[22m
+[worker] 
+[worker] 11:29:41 PM [tsx] change in ./worker\recorder\session.ts Restarting...
+[worker] [recorder] listening on http://127.0.0.1:4001
+[worker] [worker] started: concurrency=2, poll=1000ms, headless=false
+[worker] 11:31:09 PM [tsx] unlink in ./worker\recorder\merge.ts Restarting...
+[worker] [recorder] listening on http://127.0.0.1:4001
+[worker] [worker] started: concurrency=2, poll=1000ms, headless=false
+[web]   Turbopack has seen frequent file updates and is waiting for the filesystem to settle (0.5s elapsed so far; last modified: "\\\\?\\D:\\Rameez work\\Rameez ProjectSpace\\Thinklessly\\node_modules\\.vite\\vitest\\da39a3ee5e6b4b0d3255bfef95601890afd80709").
+[worker] 11:33:10 PM [tsx] change in ./worker\recorder\toolbar.ts Restarting...
+[worker] [recorder] listening on http://127.0.0.1:4001
+[worker] [worker] started: concurrency=2, poll=1000ms, headless=false
+[worker] 11:33:39 PM [tsx] change in ./worker\recorder\toolbar.ts Restarting...
+[worker] [recorder] listening on http://127.0.0.1:4001
+[worker] [worker] started: concurrency=2, poll=1000ms, headless=false
+[web] ✓ Compiled in 445ms
+[web]  GET /dashboard/automations/create 200 in 534ms (next.js: 105ms, proxy.ts: 27ms, application-code: 402ms)
+[web] [browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+[web] 
+[web] - A server/client branch `if (typeof window !== 'undefined')`.
+[web] - Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+[web] - Date formatting in a user's locale which doesn't match the server.
+[web] - External changing data without sending a snapshot of it along with the HTML.
+[web] - Invalid HTML tag nesting.
+[web] 
+[web] It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+[web] 
+[web] https://react.dev/link/hydration-mismatch
+[web] 
+[web]   ...
+[web]     <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+[web]       <AppDevOverlayErrorBoundary globalError={[...]}>
+[web]         <ReplaySsrOnlyErrors>
+[web]         <DevRootHTTPAccessFallbackBoundary>
+[web]           <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+[web]             <HTTPAccessFallbackErrorBoundary pathname="/dashboard..." notFound={<NotAllowedRootHTTPFallbackError>} ...>
+[web]               <RedirectBoundary>
+[web]                 <RedirectErrorBoundary router={{...}}>
+[web]                   <Head>
+[web]                   <__next_root_layout_boundary__>
+[web]                     <SegmentViewNode type="layout" pagePath="layout.tsx">
+[web]                       <SegmentTrieNode>
+[web]                       <link>
+[web]                       <script>
+[web]                       <RootLayout>
+[web]                         <html lang="en" className="geist_a715...">
+[web]                           <body
+[web]                             className="min-h-full flex flex-col"
+[web] -                           cz-shortcut-listen="true"
+[web]                           >
+[web]                   ...
+[web]  
+[worker] [recorder] started session 93bc7916-dfdf-43fb-8522-73921a599df7
+[web] ✓ Compiled in 416ms
+[web]  GET /dashboard/automations/create 200 in 183ms (next.js: 69ms, proxy.ts: 15ms, application-code: 99ms)
+[worker] [recorder] could not start session 53bd840e-c50b-4784-9557-e8a0b738d882: page.goto: Target page, context or browser has been closed
+[worker] Call log:
+[worker] [2m  - navigating to "https://www.dopurchase.com/en", waiting until "domcontentloaded"[22m
+[worker] 
+[web]  GET /dashboard/automations/create 200 in 370ms (next.js: 11ms, proxy.ts: 18ms, application-code: 341ms)
+[web] [browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+[web] 
+[web] - A server/client branch `if (typeof window !== 'undefined')`.
+[web] - Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+[web] - Date formatting in a user's locale which doesn't match the server.
+[web] - External changing data without sending a snapshot of it along with the HTML.
+[web] - Invalid HTML tag nesting.
+[web] 
+[web] It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+[web] 
+[web] https://react.dev/link/hydration-mismatch
+[web] 
+[web]   ...
+[web]     <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+[web]       <AppDevOverlayErrorBoundary globalError={[...]}>
+[web]         <ReplaySsrOnlyErrors>
+[web]         <DevRootHTTPAccessFallbackBoundary>
+[web]           <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+[web]             <HTTPAccessFallbackErrorBoundary pathname="/dashboard..." notFound={<NotAllowedRootHTTPFallbackError>} ...>
+[web]               <RedirectBoundary>
+[web]                 <RedirectErrorBoundary router={{...}}>
+[web]                   <Head>
+[web]                   <__next_root_layout_boundary__>
+[web]                     <SegmentViewNode type="layout" pagePath="layout.tsx">
+[web]                       <SegmentTrieNode>
+[web]                       <link>
+[web]                       <script>
+[web]                       <RootLayout>
+[web]                         <html lang="en" className="geist_a715...">
+[web]                           <body
+[web]                             className="min-h-full flex flex-col"
+[web] -                           cz-shortcut-listen="true"
+[web]                           >
+[web]                   ...
+[web]  
+[web]  GET /live 307 in 279ms (next.js: 95ms, application-code: 184ms)
+[web] Error: Route "/live": Next.js encountered runtime data during prerendering.
+[web] 
+[web] `cookies()`, `headers()`, `params`, or `searchParams` accessed outside of `<Suspense>` prevents the route from being prerendered, blocking the page load and leading to a slower user experience.
+[web] 
+[web] Ways to fix this:
+[web]   - [stream] Provide a placeholder with `<Suspense fallback={...}>` around the data access
+[web]   - [block] Set `export const instant = false` to allow a blocking route
+[web] 
+[web] Learn more: https://nextjs.org/docs/messages/blocking-prerender-runtime
+[web]     at getSession (src\lib\session.ts:22:36)
+[web]     at requireUser (src\lib\session.ts:43:25)
+[web]     at LivePage (src\app\live\page.tsx:14:20)
+[web]   20 |
+[web]   21 | export async function getSession(): Promise<SessionPayload | null> {
+[web] > 22 |   const cookieStore = await cookies();
+[web]      |                                    ^
+[web]   23 |   return verifySessionToken(cookieStore.get(SESSION_COOKIE)?.value);
+[web]   24 | }
+[web]   25 |
+[web] [?25h
+[web] [ELIFECYCLE] Command failed with exit code 1.
+[web] pnpm dev:web exited with code 1
+--> Sending SIGTERM to other processes..
+[worker] pnpm dev:worker exited with code 1

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseDefinition } from "@shared/definition";
-import { buildCaptureStep } from "./capture";
+import { parseDefinition } from "./definition";
+import { buildCaptureStep } from "./recorder-capture";
 
 const css = [{ kind: "css" as const, value: "#orders" }];
 const element = { selectors: css, name: "Orders", tag: "table" };
