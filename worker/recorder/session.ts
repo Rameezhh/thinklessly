@@ -60,14 +60,14 @@ export class RecorderSession {
     this.browser = await chromium.launch({ headless: false, args: ["--start-maximized"] });
     this.context = await this.browser.newContext({ viewport: null });
     this.context.on("page", (page) => this.attachPage(page));
-    await this.context.exposeBinding("__webtomateRecord", (_source, payload) => {
+    await this.context.exposeBinding("__thinklesslyRecord", (_source, payload) => {
       this.handleEvent(payload);
     });
     if (this.captureData) {
-      await this.context.exposeBinding("__webtomateCapture", (source, payload) => {
+      await this.context.exposeBinding("__thinklesslyCapture", (source, payload) => {
         void this.handleCapture(payload, source.page);
       });
-      await this.context.exposeBinding("__webtomateRemove", (_source, selectionId) => {
+      await this.context.exposeBinding("__thinklesslyRemove", (_source, selectionId) => {
         if (typeof selectionId === "string") this.removeCaptureStep(selectionId);
       });
     }

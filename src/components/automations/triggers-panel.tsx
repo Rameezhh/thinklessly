@@ -22,8 +22,7 @@ export type TriggerRow = {
 
 const initialState: TriggerFormState = {};
 
-const inputClass =
-  "w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-400 dark:focus:ring-zinc-800";
+const inputClass = "field";
 
 export function TriggersPanel({
   automationId,
@@ -45,20 +44,20 @@ export function TriggersPanel({
   const [delayInputs, setDelayInputs] = useState("{}");
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Triggers</h2>
-        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+    <section className="card">
+      <div className="border-b px-7 py-6 border-b border-[#E5E4DE]">
+        <h2 className="card-title">Triggers</h2>
+        <p className="card-desc">
           Triggers use saved secrets. Save secret values with a manual run first. Non-secret inputs can be set as a
           JSON object.
         </p>
       </div>
 
-      <div className="grid gap-5 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800 md:grid-cols-2">
+      <div className="grid gap-5 border-b px-7 py-6 border-b border-[#E5E4DE] md:grid-cols-2">
         <form action={cronFormAction} className="space-y-3">
-          <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Cron schedule</h3>
+          <h3 className="text-[16px] font-semibold">Cron schedule</h3>
           <div className="space-y-1.5">
-            <label htmlFor="cron-expression" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+            <label htmlFor="cron-expression" className="block mono text-[12px] uppercase tracking-[0.06em] text-[#5C6070]">
               Cron expression
             </label>
             <input
@@ -72,7 +71,7 @@ export function TriggersPanel({
             />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="cron-timezone" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+            <label htmlFor="cron-timezone" className="block mono text-[12px] uppercase tracking-[0.06em] text-[#5C6070]">
               Timezone
             </label>
             <input
@@ -86,7 +85,7 @@ export function TriggersPanel({
             />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="cron-inputs" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+            <label htmlFor="cron-inputs" className="block mono text-[12px] uppercase tracking-[0.06em] text-[#5C6070]">
               Inputs JSON
             </label>
             <input
@@ -99,25 +98,25 @@ export function TriggersPanel({
             />
           </div>
           {cronState.error ? (
-            <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+            <p role="alert" className="text-sm text-[#B42318]">
               {cronState.error}
             </p>
           ) : cronState.ok ? (
-            <p className="text-sm text-emerald-700 dark:text-emerald-300">Cron trigger added.</p>
+            <p className="text-sm text-[#0B6B43]">Cron trigger added.</p>
           ) : null}
           <button
             type="submit"
             disabled={cronPending}
-            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            className="btn btn-dark btn-sm"
           >
             {cronPending ? "Adding..." : "Add cron trigger"}
           </button>
         </form>
 
         <form action={delayFormAction} className="space-y-3">
-          <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">One-time delay</h3>
+          <h3 className="text-[16px] font-semibold">One-time delay</h3>
           <div className="space-y-1.5">
-            <label htmlFor="delay-seconds" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+            <label htmlFor="delay-seconds" className="block mono text-[12px] uppercase tracking-[0.06em] text-[#5C6070]">
               Run after (seconds)
             </label>
             <input
@@ -133,7 +132,7 @@ export function TriggersPanel({
             />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="delay-inputs" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+            <label htmlFor="delay-inputs" className="block mono text-[12px] uppercase tracking-[0.06em] text-[#5C6070]">
               Inputs JSON
             </label>
             <input
@@ -146,16 +145,16 @@ export function TriggersPanel({
             />
           </div>
           {delayState.error ? (
-            <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+            <p role="alert" className="text-sm text-[#B42318]">
               {delayState.error}
             </p>
           ) : delayState.ok ? (
-            <p className="text-sm text-emerald-700 dark:text-emerald-300">Delay trigger added.</p>
+            <p className="text-sm text-[#0B6B43]">Delay trigger added.</p>
           ) : null}
           <button
             type="submit"
             disabled={delayPending}
-            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            className="btn btn-dark btn-sm"
           >
             {delayPending ? "Adding..." : "Add delay trigger"}
           </button>
@@ -163,26 +162,26 @@ export function TriggersPanel({
       </div>
 
       {triggers.length === 0 ? (
-        <p className="px-5 py-6 text-sm text-zinc-500 dark:text-zinc-400">No triggers yet.</p>
+        <p className="px-7 py-6 text-sm text-[#5C6070]">No triggers yet.</p>
       ) : (
-        <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+        <ul className="divide-y divide-[#EFEEE8]">
           {triggers.map((trigger) => (
             <li key={trigger.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
               <div>
-                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                <p className="text-[16px] font-semibold">
                   {trigger.type === "CRON" ? "Cron" : "One-time delay"}
                   <span
-                    className={`ml-2 text-xs font-normal ${trigger.enabled ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400"}`}
+                    className={`ml-2 text-xs font-normal ${trigger.enabled ? "text-[#0B6B43]" : "text-[#8A8E9E]"}`}
                   >
                     {trigger.enabled ? "enabled" : "disabled"}
                   </span>
                 </p>
-                <p className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                <p className="mono text-xs text-[#5C6070]">
                   {trigger.type === "CRON"
                     ? `${trigger.cronExpression} · ${trigger.timezone ?? "UTC"}`
                     : `after ${trigger.delaySeconds ?? "?"} seconds`}
                 </p>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                <p className="text-xs text-[#5C6070]">
                   next {trigger.nextRunAt ?? "—"} · last fired {trigger.lastFiredAt ?? "never"}
                 </p>
               </div>
@@ -190,7 +189,7 @@ export function TriggersPanel({
                 <form action={toggleTriggerAction.bind(null, trigger.id)}>
                   <button
                     type="submit"
-                    className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                    className="btn btn-outline btn-xs"
                   >
                     {trigger.enabled ? "Disable" : "Enable"}
                   </button>
@@ -198,7 +197,7 @@ export function TriggersPanel({
                 <form action={deleteTriggerAction.bind(null, trigger.id)}>
                   <button
                     type="submit"
-                    className="rounded-md border border-red-300 px-2.5 py-1 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950"
+                    className="btn btn-danger btn-xs"
                   >
                     Delete
                   </button>

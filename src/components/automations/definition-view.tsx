@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { AutomationDefinition, ExtractField, Step } from "@shared/definition";
+import { DownIcon, UpIcon } from "@/components/brand/icons";
 import {
   convertFillToCredentialAction,
   convertFillToPayloadAction,
@@ -11,7 +12,7 @@ import {
 } from "@/lib/automation-field-actions";
 
 const smallButton =
-  "rounded-md border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900";
+  "flex h-8 w-8 items-center justify-center rounded-lg border-[1.5px] border-[#D8D6CE] bg-white text-[#14151A] transition-colors hover:border-[#b9b6ad] hover:bg-[#FBFBF9] disabled:cursor-not-allowed disabled:border-[#E5E4DE] disabled:text-[#B5B8C2] disabled:hover:bg-white";
 
 function stepDetail(step: Step): string | null {
   switch (step.type) {
@@ -79,7 +80,7 @@ function ImportantToggle({
 }) {
   const [pending, startTransition] = useTransition();
   return (
-    <label className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300">
+    <label className="flex cursor-pointer items-center gap-2 text-[13px] font-medium text-[#14151A]">
       <input
         type="checkbox"
         checked={!optional}
@@ -90,7 +91,7 @@ function ImportantToggle({
             void setStepOptionalAction(automationId, stepId, !important);
           });
         }}
-        className="h-3.5 w-3.5 rounded border-zinc-300 dark:border-zinc-700"
+        className="h-4 w-4 rounded accent-[#0E0F13]"
       />
       Important
     </label>
@@ -108,7 +109,7 @@ function RequiredToggle({
 }) {
   const [pending, startTransition] = useTransition();
   return (
-    <label className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300">
+    <label className="flex cursor-pointer items-center gap-2 text-[13px] text-[#5C6070]">
       <input
         type="checkbox"
         checked={required}
@@ -119,7 +120,7 @@ function RequiredToggle({
             void setFieldRequiredAction(automationId, fieldKey, next);
           });
         }}
-        className="h-3.5 w-3.5 rounded border-zinc-300 dark:border-zinc-700"
+        className="h-4 w-4 rounded accent-[#0E0F13]"
       />
       Required
     </label>
@@ -133,12 +134,12 @@ export function DefinitionView({
   automationId: string;
   definition: AutomationDefinition;
 }) {
-  const [order, setOrder] = useState<string[]>(() => definition.steps.map((s) => s.id));
+  const [order, setOrder] = useState<string[]>(() => definition.steps.map((step) => step.id));
   const [dragging, setDragging] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  const stepsById = new Map(definition.steps.map((s) => [s.id, s]));
+  const stepsById = new Map(definition.steps.map((step) => [step.id, step]));
   const orderedSteps = order.map((id) => stepsById.get(id)).filter(Boolean) as Step[];
 
   function moveStep(dragId: string, targetId: string) {
@@ -148,7 +149,9 @@ export function DefinitionView({
     if (targetIndex < 0) return;
     next.splice(targetIndex, 0, dragId);
     setOrder(next);
-    startTransition(() => { void reorderStepsAction(automationId, next); });
+    startTransition(() => {
+      void reorderStepsAction(automationId, next);
+    });
   }
 
   function moveOffset(stepId: string, delta: number) {
@@ -159,141 +162,182 @@ export function DefinitionView({
     if (targetIndex < 0 || targetIndex >= next.length) return;
     [next[currentIndex], next[targetIndex]] = [next[targetIndex], next[currentIndex]];
     setOrder(next);
-    startTransition(() => { void reorderStepsAction(automationId, next); });
+    startTransition(() => {
+      void reorderStepsAction(automationId, next);
+    });
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-        <div className="border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
-          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Inputs</h2>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Values are supplied at run time. Uncheck “Required” to make an input optional. Secrets are encrypted
-            at rest and never shown again.
+    <div className="flex flex-col gap-6">
+      <section className="card">
+        <div className="card-head">
+          <h2 className="card-title">Inputs</h2>
+          <p className="card-desc">
+            Values are supplied at run time. Uncheck “Required” to make an input optional. Secrets are
+            encrypted at rest and never shown again.
           </p>
         </div>
         {definition.fields.length === 0 ? (
-          <p className="px-5 py-4 text-sm text-zinc-500 dark:text-zinc-400">No inputs.</p>
+          <div className="px-7 py-5 text-sm text-[#5C6070]">No inputs.</div>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-              <tr>
-                <th className="px-5 py-2 font-medium">Label</th>
-                <th className="px-5 py-2 font-medium">Key</th>
-                <th className="px-5 py-2 font-medium">Type</th>
-                <th className="px-5 py-2 font-medium">Important</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {definition.fields.map((field) => (
-                <tr key={field.key}>
-                  <td className="px-5 py-2 text-zinc-900 dark:text-zinc-100">{field.label}</td>
-                  <td className="px-5 py-2 font-mono text-xs text-zinc-600 dark:text-zinc-400">{field.key}</td>
-                  <td className="px-5 py-2 text-zinc-600 dark:text-zinc-400">
-                    {field.type}
-                    {field.secret ? (
-                      <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">secret</span>
-                    ) : null}
-                  </td>
-                  <td className="px-5 py-2">
-                    <RequiredToggle automationId={automationId} fieldKey={field.key} required={field.required} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="divide-y divide-[#EFEEE8]">
+            {definition.fields.map((field) => (
+              <div
+                key={field.key}
+                className="flex flex-wrap items-center justify-between gap-3 px-7 py-3.5"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold">{field.label}</div>
+                  <div className="mono mt-0.5 text-[12px] text-[#5C6070]">
+                    {field.key} · {field.type}
+                    {field.secret ? " · secret" : ""}
+                  </div>
+                </div>
+                <RequiredToggle
+                  automationId={automationId}
+                  fieldKey={field.key}
+                  required={field.required}
+                />
+              </div>
+            ))}
+          </div>
         )}
       </section>
 
-      <section className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-        <div className="border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
-          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Steps</h2>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            {definition.steps.length} step(s) · start URL: {definition.startUrl}
+      <section className="card">
+        <div className="card-head">
+          <h2 className="card-title">Steps</h2>
+          <p className="card-desc">
+            {definition.steps.length} steps · start URL: {definition.startUrl}
           </p>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Uncheck “Important” on a step to skip it when its element is missing instead of failing the run.
+          <p className="mt-0.5 text-[14px] leading-[1.55] text-[#5C6070]">
+            Uncheck “Important” on a step to skip it when its element is missing instead of failing
+            the run.
           </p>
         </div>
-        <ol className="divide-y divide-zinc-200 dark:divide-zinc-800">
+
+        <ol>
           {orderedSteps.map((step, index) => {
             const selectors = selectorsFor(step);
             const detail = stepDetail(step);
+            const extraction = step.type === "extract" || step.type === "extractStructured";
             return (
               <li
                 key={step.id}
                 draggable
                 onDragStart={() => setDragging(step.id)}
-                onDragEnd={() => { setDragging(null); setDragOverId(null); }}
-                onDragOver={(event) => { event.preventDefault(); setDragOverId(step.id); }}
-                onDrop={(event) => { event.preventDefault(); if (dragging) moveStep(dragging, step.id); setDragging(null); setDragOverId(null); }}
-                className={`flex gap-4 px-5 py-3 ${dragOverId === step.id ? "ring-2 ring-zinc-500 bg-zinc-50 dark:ring-zinc-400 dark:bg-zinc-800/50" : ""}`}
+                onDragEnd={() => {
+                  setDragging(null);
+                  setDragOverId(null);
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setDragOverId(step.id);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  if (dragging) moveStep(dragging, step.id);
+                  setDragging(null);
+                  setDragOverId(null);
+                }}
+                className={`flex gap-4 px-7 py-[22px] transition-colors ${
+                  index < orderedSteps.length - 1 ? "border-b border-[#EFEEE8]" : ""
+                } ${
+                  dragOverId === step.id
+                    ? "bg-[#FAFDEB] ring-2 ring-inset ring-[#C8F23B]"
+                    : "hover:bg-[#FBFBF9]"
+                }`}
               >
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                <span
+                  className={`mono mt-0.5 flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-[13px] ${
+                    extraction
+                      ? "bg-[#C8F23B] font-semibold text-[#0E0F13]"
+                      : "bg-[#0E0F13] text-[#C8F23B]"
+                  }`}
+                >
                   {index + 1}
                 </span>
+
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span
+                      className={`mono rounded-md px-2 py-0.5 text-[12px] ${
+                        extraction
+                          ? "bg-[#EEF9C8] text-[#3F5A00]"
+                          : "bg-[#F1F0EB] text-[#14151A]"
+                      }`}
+                    >
                       {step.type}
                     </span>
-                    <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    <span className="text-base font-semibold text-[#14151A]">
                       {step.label ?? step.id}
                     </span>
                     {!step.enabled ? (
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400">disabled</span>
+                      <span className="text-xs text-[#5C6070]">disabled</span>
                     ) : null}
                     {step.optional ? (
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400">optional</span>
+                      <span className="text-xs text-[#5C6070]">optional</span>
                     ) : null}
-                    <span className="ml-auto">
-                      <ImportantToggle automationId={automationId} stepId={step.id} optional={step.optional} />
-                      <button
-                        type="button"
-                        onClick={() => moveOffset(step.id, -1)}
-                        disabled={index === 0}
-                        className={smallButton}
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => moveOffset(step.id, 1)}
-                        disabled={index === orderedSteps.length - 1}
-                        className={smallButton}
-                      >
-                        ↓
-                      </button>
-                    </span>
                   </div>
+
                   {detail ? (
-                    <p className="mt-1 truncate font-mono text-xs text-zinc-600 dark:text-zinc-400">{detail}</p>
+                    <p className="mono mt-2 break-all text-[12px] leading-[1.7] text-[#5C6070]">
+                      {detail}
+                    </p>
                   ) : null}
                   {selectors.length > 0 ? (
-                    <p className="mt-1 truncate font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                    <p className="mono mt-1.5 truncate text-[12px] text-[#5C6070]">
                       {selectors[0].kind}: {selectors[0].value}
                       {selectors.length > 1 ? ` (+${selectors.length - 1} fallback)` : ""}
                     </p>
                   ) : null}
                   {step.type === "extractStructured" ? (
-                    <pre className="mt-2 max-h-96 overflow-auto rounded-md bg-zinc-50 px-3 py-2 font-mono text-[11px] leading-relaxed text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+                    <pre className="code-block mt-3.5 max-h-96 overflow-auto text-[12px]">
                       {fieldLines(step.root).join("\n")}
                     </pre>
                   ) : null}
                   {step.type === "fill" && step.value.mode === "literal" ? (
-                    <div className="mt-2 flex flex-wrap gap-2">
+                    <div className="mt-3 flex flex-wrap gap-2">
                       <form action={convertFillToPayloadAction.bind(null, automationId, step.id)}>
-                        <button type="submit" className={smallButton}>
+                        <button type="submit" className="btn btn-outline btn-xs">
                           Add to payload
                         </button>
                       </form>
                       <form action={convertFillToCredentialAction.bind(null, automationId, step.id)}>
-                        <button type="submit" className={smallButton}>
+                        <button type="submit" className="btn btn-outline btn-xs">
                           Add to credential
                         </button>
                       </form>
                     </div>
                   ) : null}
+                </div>
+
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <ImportantToggle
+                    automationId={automationId}
+                    stepId={step.id}
+                    optional={step.optional}
+                  />
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => moveOffset(step.id, -1)}
+                      disabled={index === 0}
+                      className={smallButton}
+                      aria-label={`Move step ${index + 1} up`}
+                    >
+                      <UpIcon size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveOffset(step.id, 1)}
+                      disabled={index === orderedSteps.length - 1}
+                      className={smallButton}
+                      aria-label={`Move step ${index + 1} down`}
+                    >
+                      <DownIcon size={14} />
+                    </button>
+                  </div>
                 </div>
               </li>
             );

@@ -1,24 +1,24 @@
 export function toolbarInitScript() {
   type ToolbarWindow = Window & {
-    __webtomateToolbarInstalled?: boolean;
-    __webtomatePickMode?: boolean;
-    __webtomateAllowFrame?: boolean;
-    __webtomateCapture?: (payload: unknown) => void;
-    __webtomateSelectorsFor?: (el: Element) => unknown[];
-    __webtomateNameOf?: (el: Element) => string;
-    __webtomateInferAuto?: (el: Element) => { scope: Element; root: unknown } | null;
-    __webtomateDetectSections?: () => { el: Element; label: string; kind: string }[];
-    __webtomateRemove?: (selectionId: string) => void;
+    __thinklesslyToolbarInstalled?: boolean;
+    __thinklesslyPickMode?: boolean;
+    __thinklesslyAllowFrame?: boolean;
+    __thinklesslyCapture?: (payload: unknown) => void;
+    __thinklesslySelectorsFor?: (el: Element) => unknown[];
+    __thinklesslyNameOf?: (el: Element) => string;
+    __thinklesslyInferAuto?: (el: Element) => { scope: Element; root: unknown } | null;
+    __thinklesslyDetectSections?: () => { el: Element; label: string; kind: string }[];
+    __thinklesslyRemove?: (selectionId: string) => void;
   };
 
   type Selection = { id: number; clientId: string; label: string; kind: "data" | "value"; payload: unknown };
   type Candidate = { el: Element; box: HTMLDivElement; tag: HTMLButtonElement };
 
   const w = window as ToolbarWindow;
-  if (w.__webtomateToolbarInstalled && document.querySelector("[data-webtomate-ui]")) return;
-  if (window.top !== window && !w.__webtomateAllowFrame) return;
-  if (!w.__webtomateSelectorsFor) return;
-  w.__webtomateToolbarInstalled = true;
+  if (w.__thinklesslyToolbarInstalled && document.querySelector("[data-thinklessly-ui]")) return;
+  if (window.top !== window && !w.__thinklesslyAllowFrame) return;
+  if (!w.__thinklesslySelectorsFor) return;
+  w.__thinklesslyToolbarInstalled = true;
 
   const styles = `
     :host { all: initial; }
@@ -89,7 +89,7 @@ export function toolbarInitScript() {
   `;
 
   const host = document.createElement("div");
-  host.setAttribute("data-webtomate-ui", "");
+  host.setAttribute("data-thinklessly-ui", "");
   host.style.position = "fixed";
   host.style.top = "0";
   host.style.left = "0";
@@ -101,7 +101,7 @@ export function toolbarInitScript() {
   shadow.innerHTML = `
     <div class="candidate-layer"></div>
     <div class="panel">
-      <div class="head"><span class="dot"></span><span>Webtomate data</span><span class="spacer"></span><button class="min" title="Collapse">−</button></div>
+      <div class="head"><span class="dot"></span><span>Thinklessly data</span><span class="spacer"></span><button class="min" title="Collapse">−</button></div>
       <div class="body">
         <button class="pick" type="button">Select data</button>
         <div class="status">Click Select data, then click a highlighted section or any element.</div>
@@ -110,7 +110,7 @@ export function toolbarInitScript() {
         <div class="actions"><button class="done" type="button" hidden>Done</button><button class="cancel" type="button" hidden>Cancel</button></div>
       </div>
     </div>
-    <button class="fab" type="button" title="Open Webtomate data toolbar">W</button>
+    <button class="fab" type="button" title="Open Thinklessly data toolbar">T</button>
     <div class="highlight"><div class="tag"></div></div>
     <div class="toast"></div>
   `;
@@ -169,7 +169,7 @@ export function toolbarInitScript() {
   }
 
   function isUiNode(node: EventTarget | null): boolean {
-    return node instanceof Element && Boolean(node.closest("[data-webtomate-ui]"));
+    return node instanceof Element && Boolean(node.closest("[data-thinklessly-ui]"));
   }
 
   function hideHighlight() {
@@ -194,11 +194,11 @@ export function toolbarInitScript() {
   }
 
   function selectorsFor(el: Element): unknown[] {
-    return w.__webtomateSelectorsFor?.(el) ?? [];
+    return w.__thinklesslySelectorsFor?.(el) ?? [];
   }
 
   function nameOf(el: Element): string {
-    return w.__webtomateNameOf?.(el) ?? el.tagName.toLowerCase();
+    return w.__thinklesslyNameOf?.(el) ?? el.tagName.toLowerCase();
   }
 
   function elementPayload(el: Element) {
@@ -207,22 +207,22 @@ export function toolbarInitScript() {
 
   function send(payload: unknown, selectionId: string) {
     try {
-      w.__webtomateCapture?.({ payload, selectionId });
+      w.__thinklesslyCapture?.({ payload, selectionId });
     } catch {
-      setStatus("Could not send the selection to Webtomate.", "error");
+      setStatus("Could not send the selection to Thinklessly.", "error");
     }
   }
 
   function sendRemove(selectionId: string) {
     try {
-      w.__webtomateRemove?.(selectionId);
+      w.__thinklesslyRemove?.(selectionId);
     } catch {
       // Removing is best-effort.
     }
   }
 
   function setPickMode(enabled: boolean) {
-    w.__webtomatePickMode = enabled;
+    w.__thinklesslyPickMode = enabled;
     pickButton.classList.toggle("active", enabled);
     if (!enabled) hideHighlight();
   }
@@ -296,7 +296,7 @@ export function toolbarInitScript() {
     clearCandidates();
     if (collapsed || !picking) return;
 
-    const sections = w.__webtomateDetectSections?.() ?? [];
+    const sections = w.__thinklesslyDetectSections?.() ?? [];
     for (const [index, section] of sections.slice(0, 12).entries()) {
       const color = PALETTE[index % PALETTE.length];
       const label = (section.label || "").trim() || nameOf(section.el);
@@ -333,7 +333,7 @@ export function toolbarInitScript() {
     const resolvedLabel = label.trim() || nameOf(el);
     const id = nextSelectionId++;
     const clientId = `capture-${Date.now().toString(36)}-${id}`;
-    const inferred = w.__webtomateInferAuto?.(el) ?? null;
+    const inferred = w.__thinklesslyInferAuto?.(el) ?? null;
     if (inferred) {
       return {
         id,

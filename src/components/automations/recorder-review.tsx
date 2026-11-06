@@ -13,8 +13,7 @@ type Props = {
   onChange: (steps: Step[]) => void;
 };
 
-const inputClass =
-  "w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 font-mono text-xs text-zinc-900 outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-400 dark:focus:ring-zinc-800 dark:disabled:bg-zinc-900";
+const inputClass = "field field-sm";
 
 function stepDetail(step: Step): string {
   if (step.type === "goto") return step.url;
@@ -61,7 +60,7 @@ function SingleKeyEditor({
   const valid = outputKeySchema.safeParse(step.outputKey).success;
   return (
     <label className="mt-2 flex max-w-sm flex-col gap-1">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+      <span className="mono text-[11px] uppercase tracking-[0.06em] text-[#5C6070]">
         Output / JSON key
       </span>
       <input
@@ -69,7 +68,7 @@ function SingleKeyEditor({
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
         spellCheck={false}
-        className={`${inputClass} ${valid ? "" : "border-red-400 dark:border-red-700"}`}
+        className={`${inputClass} ${valid ? "" : "!border-[#B42318]"}`}
       />
     </label>
   );
@@ -79,25 +78,25 @@ export function RecorderReview({ steps, fields, previews, previewTotals, editabl
   const issues = outputIssuesForSteps(steps);
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <section className="card">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+          <h2 className="card-title">
             {editable ? "2. Review and save" : "Recorded steps"}
           </h2>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="card-desc">
             {editable
               ? "Rename JSON keys before saving. Captured values stay live and are read again on every run."
               : "Steps and data fields appear here as you work in the browser."}
           </p>
         </div>
-        <span className="text-xs text-zinc-500 dark:text-zinc-400">{steps.length} steps</span>
+        <span className="text-xs text-[#5C6070]">{steps.length} steps</span>
       </div>
 
       {issues.length > 0 ? (
         <p
           role="alert"
-          className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+          className="mt-3 rounded-xl border border-[#F2C5C0] bg-[#FDE8E6] px-3 py-2 text-sm text-[#B42318]"
         >
           {issues[0]?.message}
           {issues.length > 1 ? ` (+${issues.length - 1} more)` : ""}
@@ -105,7 +104,7 @@ export function RecorderReview({ steps, fields, previews, previewTotals, editabl
       ) : null}
 
       {steps.length === 0 ? (
-        <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="mt-3 text-sm text-[#5C6070]">
           Interact with the browser window. Steps will appear here as you work.
         </p>
       ) : (
@@ -118,26 +117,26 @@ export function RecorderReview({ steps, fields, previews, previewTotals, editabl
             return (
               <li
                 key={step.id}
-                className="rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+                className="rounded-2xl border border-[#E5E4DE] px-4 py-3 text-sm hover:border-[#C3C0B7] transition-colors"
               >
                 <div className="flex items-start gap-3">
-                  <span className="mt-0.5 w-6 shrink-0 text-right text-xs text-zinc-400">{index + 1}</span>
+                  <span className="mono mt-0.5 w-6 shrink-0 text-right text-xs text-[#8A8E9E]">{index + 1}</span>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="min-w-0 break-words font-medium text-zinc-900 dark:text-zinc-100">
+                      <span className="min-w-0 break-words font-semibold text-[#14151A]">
                         {step.label ?? step.type}
                       </span>
-                      <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+                      <span className="mono rounded-md bg-[#F1F0EB] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.05em] text-[#5C6070]">
                         {step.type === "extractStructured" ? "data" : step.type}
                       </span>
                       {!step.enabled ? (
-                        <span className="text-xs text-zinc-500 dark:text-zinc-400">disabled</span>
+                        <span className="text-xs text-[#5C6070]">disabled</span>
                       ) : null}
                       {step.optional ? (
-                        <span className="text-xs text-zinc-500 dark:text-zinc-400">optional</span>
+                        <span className="text-xs text-[#5C6070]">optional</span>
                       ) : null}
                     </div>
-                    <p className="mt-0.5 truncate font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                    <p className="mt-0.5 truncate font-mono text-xs text-[#5C6070]">
                       {stepDetail(step)}
                     </p>
 
@@ -159,20 +158,20 @@ export function RecorderReview({ steps, fields, previews, previewTotals, editabl
                           }
                         />
                         {preview !== undefined ? (
-                          <details className="mt-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
-                            <summary className="cursor-pointer text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                          <details className="mt-2 rounded-2xl border border-[#E5E4DE] bg-[#FBFBF9] px-4 py-3">
+                            <summary className="cursor-pointer text-xs font-medium text-[#5C6070]">
                               Sample JSON from the page
                               {itemCount !== undefined ? ` (${itemCount} item${itemCount === 1 ? "" : "s"})` : ""}
                             </summary>
-                            <pre className="mt-2 max-h-[28rem] overflow-auto rounded-md border border-zinc-200 bg-zinc-50 p-3 font-mono text-[11px] leading-relaxed text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+                            <pre className="mt-2 max-h-[28rem] overflow-auto code-block mt-2 max-h-[28rem] overflow-auto text-[11px] text-[#D5D8E2]">
                               {JSON.stringify(preview, null, 2)}
                             </pre>
-                            <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+                            <p className="mt-2 text-[11px] text-[#5C6070]">
                               This is the full data captured for this step. Each run reads it fresh from the page.
                             </p>
                           </details>
                         ) : editable ? (
-                          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                          <p className="mt-2 text-xs text-[#5C6070]">
                             No sample preview was captured for this field.
                           </p>
                         ) : null}
@@ -187,19 +186,19 @@ export function RecorderReview({ steps, fields, previews, previewTotals, editabl
       )}
 
       {fields.length > 0 ? (
-        <div className="mt-4 rounded-md bg-zinc-50 p-3 dark:bg-zinc-900">
-          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        <div className="mt-4 rounded-2xl border border-[#E5E4DE] bg-[#FBFBF9] p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-[#5C6070]">
             Run-time inputs
           </p>
           <ul className="mt-2 space-y-1">
             {fields.map((field) => (
-              <li key={field.key} className="text-sm text-zinc-700 dark:text-zinc-300">
+              <li key={field.key} className="text-sm text-[#14151A]">
                 <span className="font-mono text-xs">{field.key}</span> · {field.label} · {field.type}
                 {field.secret ? " · secret" : ""}
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="mt-2 text-xs text-[#5C6070]">
             Password and file values are never recorded. You will enter them when running the automation.
           </p>
         </div>

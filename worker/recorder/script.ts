@@ -1,23 +1,23 @@
 export function recorderInitScript() {
   type RecorderWindow = Window & {
-    __webtomateRecord?: (event: unknown) => void;
-    __webtomateCapture?: (payload: unknown) => void;
-    __webtomateRecorderInstalled?: boolean;
-    __webtomatePickMode?: boolean;
-    __webtomateSelectorsFor?: (el: Element) => unknown[];
-    __webtomateNameOf?: (el: Element) => string;
-    __webtomateTextOf?: (el: Element) => string;
-    __webtomateRelativeSelector?: (scope: Element, el: Element) => string | null;
-    __webtomateEscape?: (value: string) => string;
+    __thinklesslyRecord?: (event: unknown) => void;
+    __thinklesslyCapture?: (payload: unknown) => void;
+    __thinklesslyRecorderInstalled?: boolean;
+    __thinklesslyPickMode?: boolean;
+    __thinklesslySelectorsFor?: (el: Element) => unknown[];
+    __thinklesslyNameOf?: (el: Element) => string;
+    __thinklesslyTextOf?: (el: Element) => string;
+    __thinklesslyRelativeSelector?: (scope: Element, el: Element) => string | null;
+    __thinklesslyEscape?: (value: string) => string;
   };
 
   const w = window as RecorderWindow;
-  if (w.__webtomateRecorderInstalled) return;
-  w.__webtomateRecorderInstalled = true;
+  if (w.__thinklesslyRecorderInstalled) return;
+  w.__thinklesslyRecorderInstalled = true;
 
   function send(payload: unknown) {
     try {
-      w.__webtomateRecord?.(payload);
+      w.__thinklesslyRecord?.(payload);
     } catch {
       // Ignore binding failures while the page is unloading.
     }
@@ -183,7 +183,7 @@ export function recorderInitScript() {
   function isUiEvent(event: Event): boolean {
     return event
       .composedPath()
-      .some((node) => node instanceof Element && node.hasAttribute("data-webtomate-ui"));
+      .some((node) => node instanceof Element && node.hasAttribute("data-thinklessly-ui"));
   }
 
   function selectorsFor(el: Element): unknown[] {
@@ -241,7 +241,7 @@ export function recorderInitScript() {
   }
 
   function handleClick(event: MouseEvent) {
-    if (w.__webtomatePickMode || isUiEvent(event)) return;
+    if (w.__thinklesslyPickMode || isUiEvent(event)) return;
     const el = resolveTarget(event.target);
     if (!el || (el as HTMLButtonElement).disabled) return;
 
@@ -254,7 +254,7 @@ export function recorderInitScript() {
   }
 
   function handleChange(event: Event) {
-    if (w.__webtomatePickMode || isUiEvent(event)) return;
+    if (w.__thinklesslyPickMode || isUiEvent(event)) return;
     const el = resolveTarget(event.target);
     if (!el) return;
     const tag = el.tagName.toLowerCase();
@@ -292,7 +292,7 @@ export function recorderInitScript() {
   }
 
   function handleKeyDown(event: KeyboardEvent) {
-    if (w.__webtomatePickMode || isUiEvent(event)) return;
+    if (w.__thinklesslyPickMode || isUiEvent(event)) return;
     if (event.key !== "Enter" || event.repeat) return;
     const el = resolveTarget(event.target);
     if (!el) return;
@@ -301,11 +301,11 @@ export function recorderInitScript() {
     send({ kind: "press", element: elementInfo(el), key: "Enter" });
   }
 
-  w.__webtomateSelectorsFor = selectorsFor;
-  w.__webtomateNameOf = nameOf;
-  w.__webtomateTextOf = textOf;
-  w.__webtomateRelativeSelector = relativeSelector;
-  w.__webtomateEscape = escapeValue;
+  w.__thinklesslySelectorsFor = selectorsFor;
+  w.__thinklesslyNameOf = nameOf;
+  w.__thinklesslyTextOf = textOf;
+  w.__thinklesslyRelativeSelector = relativeSelector;
+  w.__thinklesslyEscape = escapeValue;
 
   function attach() {
     document.addEventListener("click", handleClick, true);

@@ -17,6 +17,7 @@ export async function registerAction(
 ): Promise<AuthFormState> {
   const parsed = registerSchema.safeParse({
     name: formString(formData, "name"),
+    teamName: formString(formData, "teamName"),
     email: formString(formData, "email").trim().toLowerCase(),
     password: formString(formData, "password"),
   });
@@ -26,6 +27,7 @@ export async function registerAction(
   }
 
   const { name, email, password } = parsed.data;
+  const teamName = parsed.data.teamName?.trim() || `${name}'s team`;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -41,7 +43,7 @@ export async function registerAction(
         data: { email, passwordHash, name },
       });
       const team = await tx.team.create({
-        data: { name: `${name}'s team` },
+        data: { name: teamName },
       });
       await tx.membership.create({
         data: { userId: user.id, teamId: team.id, role: "OWNER" },

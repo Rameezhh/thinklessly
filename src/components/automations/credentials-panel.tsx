@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, Lock, ShieldCheck, Trash2 } from "lucide-react";
+import { KeyRound, ShieldCheck, Trash2 } from "lucide-react";
 import { useActionState } from "react";
 import type { Field, Step } from "@shared/definition";
 import { fieldsUsedBySteps } from "@shared/fields";
@@ -11,7 +11,6 @@ import {
   saveCredentialsAction,
   type FieldPanelState,
 } from "@/lib/automation-field-actions";
-import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input, Label } from "@/components/ui/input";
@@ -41,15 +40,12 @@ export function CredentialsPanel({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <CardTitle className="flex items-center gap-2">
-            <Lock className="h-4 w-4 text-indigo-500" aria-hidden />
-            Credentials
-          </CardTitle>
+          <CardTitle>Credentials</CardTitle>
           <CardDescription>
-            Encrypted values attached to every run. They are never returned by the API and never accepted in an
-            API payload.
+            Encrypted values attached to every run. They are never returned by the API and never
+            accepted in an API payload.
           </CardDescription>
         </div>
         <Badge tone="neutral" icon={ShieldCheck}>
@@ -57,9 +53,9 @@ export function CredentialsPanel({
         </Badge>
       </CardHeader>
 
-      <CardBody className="space-y-4">
+      <CardBody className="space-y-5">
         {secretFields.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-zinc-300 px-4 py-4 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+          <p className="rounded-2xl border-[1.5px] border-dashed border-[#D8D6CE] px-5 py-5 text-sm text-[#5C6070]">
             No credentials yet. Add one below, or convert a recorded password input.
           </p>
         ) : (
@@ -69,12 +65,12 @@ export function CredentialsPanel({
               return (
                 <div
                   key={field.key}
-                  className="rounded-xl border border-zinc-200 bg-white px-3 py-3 dark:border-zinc-800 dark:bg-zinc-950"
+                  className="rounded-2xl border border-[#E5E4DE] bg-white px-4 py-4"
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <KeyRound className="h-3.5 w-3.5 text-indigo-500" aria-hidden />
-                    <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{field.label}</span>
-                    <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">{field.key}</span>
+                    <KeyRound className="h-3.5 w-3.5 text-[#5C6070]" aria-hidden />
+                    <span className="text-sm font-semibold text-[#14151A]">{field.label}</span>
+                    <span className="mono text-xs text-[#5C6070]">{field.key}</span>
                     {saved.has(field.key) ? (
                       <Badge tone="success">saved</Badge>
                     ) : (
@@ -86,7 +82,7 @@ export function CredentialsPanel({
                           type="submit"
                           formAction={deleteCredentialAction.bind(null, automationId, field.key)}
                           title="Delete saved value"
-                          className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/50"
+                          className="rounded-lg p-1.5 text-[#8A8E9E] transition-colors hover:bg-[#FDE8E6] hover:text-[#B42318]"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -96,14 +92,14 @@ export function CredentialsPanel({
                         formAction={deleteFieldAction.bind(null, automationId, field.key)}
                         disabled={!deletable}
                         title={deletable ? "Delete credential field" : "Remove the saved value first"}
-                        className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-rose-950/50"
+                        className="rounded-lg p-1.5 text-[#8A8E9E] transition-colors hover:bg-[#FDE8E6] hover:text-[#B42318] disabled:cursor-not-allowed disabled:opacity-30"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
-                  <div className="mt-2 space-y-1">
-                    <Label htmlFor={`credential-${field.key}`}>
+                  <div className="mt-2.5 space-y-1.5">
+                    <Label htmlFor={`credential-${field.key}`} className="text-[13px]">
                       {saved.has(field.key) ? "Replace value" : "Value"}
                     </Label>
                     <Input
@@ -112,7 +108,7 @@ export function CredentialsPanel({
                       name={`credential:${field.key}`}
                       autoComplete="new-password"
                       placeholder={saved.has(field.key) ? "Leave blank to keep the saved value" : "Enter credential"}
-                      className="font-mono text-xs"
+                      className="field-sm"
                     />
                   </div>
                 </div>
@@ -122,47 +118,46 @@ export function CredentialsPanel({
             {state.error ? (
               <p
                 role="alert"
-                className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"
+                className="rounded-xl border border-[#F2C5C0] bg-[#FDE8E6] px-3.5 py-2.5 text-sm text-[#B42318]"
               >
                 {state.error}
               </p>
             ) : null}
             {state.success ? (
-              <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+              <p className="rounded-xl border border-[#CFE58A] bg-[#FAFDEB] px-3.5 py-2.5 text-sm text-[#3F5A00]">
                 {state.success}
               </p>
             ) : null}
 
-            <Button type="submit" loading={saving}>
+            <button type="submit" disabled={saving} className="btn btn-dark">
               {saving ? "Saving..." : "Save credentials"}
-            </Button>
+            </button>
           </form>
         )}
 
         <FieldAddForm automationId={automationId} kind="credential" />
 
         {movableFields.length > 0 ? (
-          <div className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+          <div className="border-t border-[#E5E4DE] pt-4">
+            <p className="mono text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5C6070]">
               Move a payload field to credentials
             </p>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            <p className="mt-1.5 text-xs leading-relaxed text-[#5C6070]">
               The default value is removed from the definition and must be entered here instead.
             </p>
-            <ul className="mt-2 space-y-1.5">
+            <ul className="mt-3 space-y-2">
               {movableFields.map((field) => (
                 <li
                   key={field.key}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#E5E4DE] px-3.5 py-2.5"
                 >
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                    <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">{field.key}</span> ·{" "}
-                    {field.label}
+                  <span className="text-sm text-[#14151A]">
+                    <span className="mono text-xs text-[#5C6070]">{field.key}</span> · {field.label}
                   </span>
                   <form action={moveFieldToCredentialsAction.bind(null, automationId, field.key)}>
-                    <Button type="submit" variant="secondary" size="sm">
+                    <button type="submit" className="btn btn-outline btn-xs">
                       Move to credentials
-                    </Button>
+                    </button>
                   </form>
                 </li>
               ))}
@@ -172,9 +167,7 @@ export function CredentialsPanel({
       </CardBody>
 
       <CardFooter>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          Passwords recorded in the browser are created as credentials automatically.
-        </p>
+        <p>Passwords recorded in the browser are created as credentials automatically.</p>
       </CardFooter>
     </Card>
   );

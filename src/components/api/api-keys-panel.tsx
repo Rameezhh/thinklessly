@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { KeyIcon } from "@/components/brand/icons";
 import {
   createApiKeyAction,
   revokeApiKeyAction,
@@ -18,25 +19,24 @@ export type ApiKeyRow = {
 
 const initialState: ApiKeyFormState = {};
 
-const inputClass =
-  "w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-400 dark:focus:ring-zinc-800";
+const inputClass = "field";
 
 export function ApiKeysPanel({ keys }: { keys: ApiKeyRow[] }) {
   const [state, formAction, pending] = useActionState(createApiKeyAction, initialState);
   const [name, setName] = useState("");
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">API keys</h2>
-        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+    <section className="card">
+      <div className="border-b border-b border-[#E5E4DE] px-7 py-6">
+        <h2 className="card-title">API keys</h2>
+        <p className="mt-1 card-desc">
           Keys are hashed. The full key is shown once, so copy it before leaving this page.
         </p>
       </div>
 
-      <form action={formAction} className="flex flex-wrap items-end gap-3 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
+      <form action={formAction} className="flex flex-wrap items-end gap-3 border-b border-b border-[#E5E4DE] px-7 py-6">
         <div className="min-w-[220px] flex-1 space-y-1.5">
-          <label htmlFor="api-key-name" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          <label htmlFor="api-key-name" className="label">
             Key name
           </label>
           <input
@@ -54,44 +54,52 @@ export function ApiKeysPanel({ keys }: { keys: ApiKeyRow[] }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          className="btn btn-dark"
         >
           {pending ? "Creating..." : "Create key"}
         </button>
       </form>
 
       {state.error ? (
-        <p role="alert" className="border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+        <p role="alert" className="border-b border-[#F2C5C0] bg-[#FDE8E6] px-7 py-3 text-sm text-[#B42318]">
           {state.error}
         </p>
       ) : null}
 
       {state.key ? (
-        <div className="border-b border-emerald-200 bg-emerald-50 px-5 py-4 dark:border-emerald-900 dark:bg-emerald-950">
-          <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+        <div className="border-b border-emerald-200 bg-[#FAFDEB] px-7 py-4">
+          <p className="text-sm font-medium text-[#0B6B43]">
             Copy this key now. It will not be shown again.
           </p>
-          <code className="mt-2 block break-all rounded bg-white px-3 py-2 font-mono text-xs text-emerald-900 dark:bg-black dark:text-emerald-300">
+          <code className="mt-2 block break-all mono mt-2 block break-all rounded-xl border border-[#CFE58A] bg-white px-3 py-2 text-xs text-[#0B6B43]">
             {state.key}
           </code>
         </div>
       ) : null}
 
       {keys.length === 0 ? (
-        <p className="px-5 py-6 text-sm text-zinc-500 dark:text-zinc-400">No API keys yet.</p>
+        <div className="flex flex-col items-center gap-2.5 bg-[#FBFBF9] px-7 py-10 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#F1F0EB] text-[#14151A]">
+            <KeyIcon size={22} />
+          </div>
+          <p className="text-base font-semibold text-[#14151A]">No API keys yet</p>
+          <p className="max-w-[360px] text-sm leading-relaxed text-[#5C6070]">
+            Create your first key above to start running automations from your own code.
+          </p>
+        </div>
       ) : (
-        <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+        <ul className="divide-y divide-[#EFEEE8]">
           {keys.map((key) => (
-            <li key={key.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+            <li key={key.id} className="flex flex-wrap items-center justify-between gap-3 px-7 py-4">
               <div>
-                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                <p className="text-sm font-medium text-[#14151A]">
                   {key.name}
                   {key.revokedAt ? (
-                    <span className="ml-2 text-xs font-normal text-red-600 dark:text-red-400">revoked</span>
+                    <span className="ml-2 text-xs font-normal text-[#B42318]">revoked</span>
                   ) : null}
                 </p>
-                <p className="font-mono text-xs text-zinc-500 dark:text-zinc-400">{key.prefix}…</p>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                <p className="font-mono card-desc">{key.prefix}…</p>
+                <p className="card-desc">
                   created {key.createdAt} · last used {key.lastUsedAt ?? "never"}
                 </p>
               </div>
@@ -99,7 +107,7 @@ export function ApiKeysPanel({ keys }: { keys: ApiKeyRow[] }) {
                 <form action={revokeApiKeyAction.bind(null, key.id)}>
                   <button
                     type="submit"
-                    className="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950"
+                    className="btn btn-danger btn-sm"
                   >
                     Revoke
                   </button>

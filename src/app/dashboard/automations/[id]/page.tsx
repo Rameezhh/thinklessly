@@ -10,8 +10,8 @@ import {
   type AutomationDefinition,
   type Step,
 } from "@shared/definition";
+import { ArrowLeftIcon } from "@/components/brand/icons";
 import { autoPayloadAction } from "@/lib/automation-field-actions";
-import { Button } from "@/components/ui/button";
 import { CredentialsPanel } from "@/components/automations/credentials-panel";
 import { DefinitionView } from "@/components/automations/definition-view";
 import { OutputsPanel } from "@/components/automations/outputs-panel";
@@ -19,12 +19,13 @@ import { PayloadPanel } from "@/components/automations/payload-panel";
 import { RunForm } from "@/components/automations/run-form";
 import { TriggersPanel, type TriggerRow } from "@/components/automations/triggers-panel";
 import { PageLoading } from "@/components/dashboard/page-loading";
-import { formatDateTime, statusClasses } from "@/lib/format";
+import { StatusPill } from "@/components/ui/status-pill";
+import { formatDateTime } from "@/lib/format";
 import { findAutomation } from "@/lib/ownership";
 import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = {
-  title: "Automation | Webtomate",
+  title: "Automation",
 };
 
 export default function AutomationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -94,108 +95,114 @@ async function AutomationContent({ params }: { params: Promise<{ id: string }> }
     : [];
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-10">
-      <div className="space-y-6">
-        <div>
-          <Link
-            href="/dashboard/automations"
-            className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-          >
-            ← Automations
-          </Link>
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">{automation.name}</h1>
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${statusClasses(automation.status)}`}
-            >
-              {automation.status}
-            </span>
-          </div>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            {automation.currentVersion
-              ? `Version ${automation.currentVersion.versionNumber} · published ${formatDateTime(automation.currentVersion.createdAt)}`
-              : "No published version"}
-          </p>
-          {automation.description ? (
-            <a
-              href={automation.description}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-1 inline-block truncate text-xs font-mono text-zinc-500 hover:underline dark:text-zinc-400"
-            >
-              {automation.description}
-            </a>
-          ) : null}
-        </div>
+    <div>
+      <Link
+        href="/dashboard/automations"
+        className="link-arrow inline-flex items-center gap-2 text-[14px] font-semibold text-[#5C6070] transition-colors hover:text-[#14151A]"
+      >
+        <ArrowLeftIcon size={14} />
+        Automations
+      </Link>
 
-        {!automation.currentVersion ? (
-          <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
-            This automation has no published version, so it cannot run yet.
-          </p>
-        ) : definitionError ? (
-          <p
-            role="alert"
-            className="whitespace-pre-line rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
-          >
-            {definitionError}
-          </p>
-        ) : definition ? (
-          <>
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+      <div className="mt-4 flex flex-wrap items-center gap-3.5">
+        <h1 className="display text-[34px] leading-[1.05] tracking-[-0.035em] sm:text-[44px]">
+          {automation.name}
+        </h1>
+        <StatusPill status={automation.status} />
+      </div>
+      <p className="mt-2.5 text-[15px] text-[#5C6070]">
+        {automation.currentVersion
+          ? `Version ${automation.currentVersion.versionNumber} · published ${formatDateTime(automation.currentVersion.createdAt)}`
+          : "No published version"}
+      </p>
+      {automation.description ? (
+        <a
+          href={automation.description}
+          target="_blank"
+          rel="noreferrer"
+          className="mono mt-1.5 inline-block max-w-full truncate text-[13px] text-[#5C6070] transition-colors hover:text-[#14151A]"
+        >
+          {automation.description}
+        </a>
+      ) : null}
+
+      {!automation.currentVersion ? (
+        <p className="mt-8 rounded-2xl border-[1.5px] border-dashed border-[#D8D6CE] bg-[#FBFBF9] px-4 py-3.5 text-sm text-[#5C6070]">
+          This automation has no published version, so it cannot run yet.
+        </p>
+      ) : definitionError ? (
+        <p
+          role="alert"
+          className="mt-8 whitespace-pre-line rounded-2xl border border-[#F2C5C0] bg-[#FDE8E6] px-4 py-3.5 text-sm text-[#B42318]"
+        >
+          {definitionError}
+        </p>
+      ) : definition ? (
+        <>
+          <div className="mt-9 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_330px]">
+            <div className="flex min-w-0 flex-col gap-6">
               <DefinitionView automationId={automation.id} definition={definition} />
-              <aside className="lg:sticky lg:top-6 lg:self-start">
-                <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                  <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Run now</h2>
-                  <p className="mb-4 mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                    Fill the inputs and queue one manual run.
-                  </p>
+
+              {needsAutoPayload ? (
+                <form action={autoPayloadAction.bind(null, automation.id)}>
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#CFE58A] bg-[#FAFDEB] px-4 py-3.5">
+                    <p className="text-sm leading-relaxed text-[#3F5A00]">
+                      Some recorded inputs are still fixed values. Move them to the payload so they
+                      can be overridden at run time.
+                    </p>
+                    <button type="submit" className="btn btn-dark btn-sm">
+                      Add recorded values to payload
+                    </button>
+                  </div>
+                </form>
+              ) : null}
+
+              <PayloadPanel
+                key={`payload-${automation.currentVersion.id}`}
+                automationId={automation.id}
+                fields={definition.fields}
+                steps={definition.steps}
+              />
+              <OutputsPanel
+                key={automation.currentVersion.id}
+                automationId={automation.id}
+                steps={extractionSteps}
+              />
+              <CredentialsPanel
+                key={`credentials-${automation.currentVersion.id}`}
+                automationId={automation.id}
+                fields={definition.fields}
+                steps={definition.steps}
+                savedSecretKeys={savedSecrets.map((secret) => secret.fieldKey)}
+              />
+              <TriggersPanel
+                automationId={automation.id}
+                triggers={triggerRows}
+                defaultTimezone={defaultTimezone}
+              />
+            </div>
+
+            <aside className="xl:sticky xl:top-6 xl:self-start">
+              <div className="rounded-3xl bg-[#0E0F13] p-7 text-white">
+                <div className="flex items-center gap-2.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#C8F23B]" />
+                  <h2 className="display text-[22px] font-bold tracking-[-0.02em]">Run now</h2>
+                </div>
+                <p className="mt-3 text-sm leading-[1.55] text-[#A3A7B5]">
+                  Fill the inputs and queue one manual run.
+                </p>
+                <div className="mt-4">
                   <RunForm
                     automationId={automation.id}
                     fields={definition.fields}
                     savedSecretKeys={savedSecrets.map((secret) => secret.fieldKey)}
                   />
-                </section>
-              </aside>
-            </div>
-            {needsAutoPayload ? (
-              <form action={autoPayloadAction.bind(null, automation.id)}>
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200/70 bg-indigo-50/60 px-4 py-3 dark:border-indigo-900/50 dark:bg-indigo-950/30">
-                  <p className="text-sm text-indigo-900 dark:text-indigo-200">
-                    Some recorded inputs are still fixed values. Move them to the payload so they can be
-                    overridden at run time.
-                  </p>
-                  <Button type="submit" size="sm">
-                    Add recorded values to payload
-                  </Button>
                 </div>
-              </form>
-            ) : null}
-            <PayloadPanel
-              key={`payload-${automation.currentVersion.id}`}
-              automationId={automation.id}
-              fields={definition.fields}
-              steps={definition.steps}
-            />
-            <OutputsPanel
-              key={automation.currentVersion.id}
-              automationId={automation.id}
-              steps={extractionSteps}
-            />
-            <CredentialsPanel
-              key={`credentials-${automation.currentVersion.id}`}
-              automationId={automation.id}
-              fields={definition.fields}
-              steps={definition.steps}
-              savedSecretKeys={savedSecrets.map((secret) => secret.fieldKey)}
-            />
-            <TriggersPanel
-              automationId={automation.id}
-              triggers={triggerRows}
-              defaultTimezone={defaultTimezone}
-            />
-          </>
-        ) : null}
-      </div>
-    </main>
+              </div>
+            </aside>
+          </div>
+        </>
+      ) : null}
+    </div>
   );
 }

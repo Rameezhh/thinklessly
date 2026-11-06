@@ -18,14 +18,11 @@ type Snapshot = {
 
 const initialState: ImportAutomationState = {};
 
-const inputClass =
-  "w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-400 dark:focus:ring-zinc-800 dark:disabled:bg-zinc-900";
+const inputClass = "field";
 
-const primaryButton =
-  "rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300";
+const primaryButton = "btn btn-dark";
 
-const secondaryButton =
-  "rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900";
+const secondaryButton = "btn btn-outline";
 
 const emptySnapshot: Snapshot = {
   startUrl: "",
@@ -328,24 +325,24 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
 
   return (
     <div className="space-y-5">
-      <section className="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+      <section className="space-y-4 rounded-3xl border border-[#E5E4DE] bg-white p-6 sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">1. Start here</h2>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            <h2 className="display text-[22px] font-bold tracking-[-0.02em]">1. Start here</h2>
+            <p className="mt-1 text-sm text-[#5C6070]">
               A Chromium window will open at your URL. Record clicks and forms, and optionally capture page data
               as JSON.
             </p>
           </div>
           <div className="flex items-center gap-2">
             {snapshot.captureData ? (
-              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+              <span className="pill pill-success">
                 Data capture on
               </span>
             ) : null}
             {phase === "recording" ? (
-              <span className="flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-950 dark:text-red-300">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+              <span className="pill pill-danger">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-[#FF5A4D]" />
                 Recording
               </span>
             ) : null}
@@ -354,7 +351,7 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <label htmlFor="recorder-name" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label htmlFor="recorder-name" className="label">
               Automation name
             </label>
             <input
@@ -369,7 +366,7 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
             />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="recorder-url" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label htmlFor="recorder-url" className="label">
               Starting URL
             </label>
             <input
@@ -384,7 +381,7 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
           </div>
         </div>
 
-        <label className="flex items-start gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
+        <label className="flex items-start gap-3.5 rounded-2xl border-[1.5px] border-[#CFE58A] bg-[#FAFDEB] px-5 py-4 text-sm">
           <input
             type="checkbox"
             checked={captureData}
@@ -393,11 +390,11 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
               setSnapshot((current) => ({ ...current, captureData: event.target.checked }));
             }}
             disabled={phase !== "setup"}
-            className="mt-0.5 h-4 w-4 rounded border-zinc-300 dark:border-zinc-700"
+            className="mt-0.5 mt-0.5 h-5 w-5 shrink-0 rounded accent-[#0E0F13]"
           />
           <span>
-            <span className="font-medium text-zinc-800 dark:text-zinc-200">Capture data from page</span>
-            <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="font-semibold text-[#14151A]">Capture data from page</span>
+            <span className="mt-1 block text-sm leading-relaxed text-[#4A4E5C]">
               Shows a floating toolbar in the browser. Select any table, list, card, section, or div to save a
               live JSON output. Values are extracted fresh on every run.
             </span>
@@ -407,7 +404,7 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
         {error ? (
           <p
             role="alert"
-            className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+            className="rounded-xl border border-[#F2C5C0] bg-[#FDE8E6] px-3.5 py-2.5 text-sm text-[#B42318]"
           >
             {error}
           </p>
@@ -420,7 +417,7 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
         ) : null}
 
         {phase === "starting" ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Opening the recording browser...</p>
+          <p className="text-sm text-[#5C6070]">Opening the recording browser...</p>
         ) : null}
 
         {phase === "recording" ? (
@@ -431,8 +428,8 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
             <button type="button" onClick={() => void cancelRecording()} disabled={busy} className={secondaryButton}>
               Cancel recording
             </button>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Use the Chromium window{snapshot.captureData ? " and the Webtomate data toolbar" : ""}, then click
+            <p className="text-xs text-[#5C6070]">
+              Use the Chromium window{snapshot.captureData ? " and the Thinklessly data toolbar" : ""}, then click
               End automation.
             </p>
             {!snapshot.captureData ? (
@@ -451,7 +448,7 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
             {state.error ? (
               <p
                 role="alert"
-                className="whitespace-pre-line rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+                className="whitespace-pre-line rounded-xl border border-[#F2C5C0] bg-[#FDE8E6] px-3.5 py-2.5 text-sm text-[#B42318]"
               >
                 {state.error}
               </p>
@@ -472,7 +469,7 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
               <button type="button" onClick={startOver} disabled={saving} className={secondaryButton}>
                 Start over
               </button>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs text-[#5C6070]">
                 Saves version 1 and opens the automation page.
               </p>
             </div>
@@ -492,8 +489,8 @@ export function RecorderPanel({ recorderPort }: { recorderPort: string }) {
       ) : null}
 
       {phase === "setup" ? (
-        <section className="rounded-xl border border-dashed border-zinc-300 p-5 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-          <p className="font-medium text-zinc-700 dark:text-zinc-300">How recording works</p>
+        <section className="rounded-3xl border-[1.5px] border-dashed border-[#D8D6CE] bg-[#FBFBF9] p-6 text-sm text-[#5C6070]">
+          <p className="font-semibold text-[#14151A]">How recording works</p>
           <ol className="mt-2 list-decimal space-y-1 pl-5">
             <li>Enter a name and the page where the flow starts.</li>
             <li>Leave data capture on if you want the in-browser JSON picker.</li>

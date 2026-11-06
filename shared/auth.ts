@@ -10,6 +10,9 @@ export const registerSchema = z.object({
     .trim()
     .min(2, "Name must be at least 2 characters.")
     .max(80, "Name must be at most 80 characters."),
+  teamName: z
+    .union([z.literal(""), z.string().trim().min(2, "Team name must be at least 2 characters.").max(80, "Team name must be at most 80 characters.")])
+    .optional(),
   email: z.email("Enter a valid email address."),
   password: z
     .string()

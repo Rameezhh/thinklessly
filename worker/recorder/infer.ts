@@ -7,16 +7,16 @@ export function inferInitScript() {
   type Group = { scope: Element; items: Element[]; prototype: Element; selector: string };
 
   type InferWindow = Window & {
-    __webtomateInferAuto?: (el: Element) => { scope: Element; root: Field } | null;
-    __webtomateDetectGroup?: (el: Element) => Group | null;
-    __webtomateItemSelector?: (scope: Element, items: Element[]) => string;
-    __webtomateKeyOf?: (el: Element, fallback: string) => string;
-    __webtomateContainerKey?: (el: Element, fallback: string) => string;
-    __webtomateRelativeSelector?: (scope: Element, el: Element) => string | null;
+    __thinklesslyInferAuto?: (el: Element) => { scope: Element; root: Field } | null;
+    __thinklesslyDetectGroup?: (el: Element) => Group | null;
+    __thinklesslyItemSelector?: (scope: Element, items: Element[]) => string;
+    __thinklesslyKeyOf?: (el: Element, fallback: string) => string;
+    __thinklesslyContainerKey?: (el: Element, fallback: string) => string;
+    __thinklesslyRelativeSelector?: (scope: Element, el: Element) => string | null;
   };
 
   const w = window as InferWindow;
-  if (!w.__webtomateRelativeSelector) return;
+  if (!w.__thinklesslyRelativeSelector) return;
 
   const MAX_DEPTH = 4;
   const MAX_FIELDS = 120;
@@ -65,7 +65,7 @@ export function inferInitScript() {
 
   function isSkipped(el: Element): boolean {
     if (skippedTags.has(tagOf(el))) return true;
-    if (el.hasAttribute("data-webtomate-ui") || el.closest("[data-webtomate-ui]")) return true;
+    if (el.hasAttribute("data-thinklessly-ui") || el.closest("[data-thinklessly-ui]")) return true;
     if (el.getAttribute("aria-hidden") === "true") return true;
     return isHidden(el);
   }
@@ -108,7 +108,7 @@ export function inferInitScript() {
   }
 
   function relative(scope: Element, el: Element): string | null {
-    return w.__webtomateRelativeSelector?.(scope, el) ?? null;
+    return w.__thinklesslyRelativeSelector?.(scope, el) ?? null;
   }
 
   function itemSelector(scope: Element, items: Element[]): string {
@@ -382,11 +382,11 @@ export function inferInitScript() {
     };
   }
 
-  w.__webtomateInferAuto = inferAuto;
-  w.__webtomateDetectGroup = detectGroup;
-  w.__webtomateItemSelector = itemSelector;
-  w.__webtomateKeyOf = keyOf;
-  w.__webtomateContainerKey = containerKey;
+  w.__thinklesslyInferAuto = inferAuto;
+  w.__thinklesslyDetectGroup = detectGroup;
+  w.__thinklesslyItemSelector = itemSelector;
+  w.__thinklesslyKeyOf = keyOf;
+  w.__thinklesslyContainerKey = containerKey;
 }
 
 export function buildInferScript(): string {

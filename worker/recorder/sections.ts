@@ -3,13 +3,13 @@ export function sectionsInitScript() {
   type Section = { el: Element; label: string; kind: "table" | "form" | "list" | "object" };
 
   type SectionsWindow = Window & {
-    __webtomateDetectSections?: () => Section[];
-    __webtomateDetectGroup?: (el: Element) => DetectedGroup | null;
+    __thinklesslyDetectSections?: () => Section[];
+    __thinklesslyDetectGroup?: (el: Element) => DetectedGroup | null;
   };
 
   const w = window as SectionsWindow;
-  if (!w.__webtomateDetectGroup) return;
-  if (w.__webtomateDetectSections) return;
+  if (!w.__thinklesslyDetectGroup) return;
+  if (w.__thinklesslyDetectSections) return;
 
   const MAX_SECTIONS = 12;
   const GROUP_LIMIT = 400;
@@ -26,7 +26,7 @@ export function sectionsInitScript() {
 
   function isSkipped(el: Element): boolean {
     if (skippedTags.has(tagOf(el))) return true;
-    if (el.hasAttribute("data-webtomate-ui") || el.closest("[data-webtomate-ui]")) return true;
+    if (el.hasAttribute("data-thinklessly-ui") || el.closest("[data-thinklessly-ui]")) return true;
     if (el.getAttribute("aria-hidden") === "true") return true;
     return isHidden(el);
   }
@@ -111,7 +111,7 @@ export function sectionsInitScript() {
       if (scanned >= GROUP_LIMIT) break;
       scanned += 1;
       if (found.has(el) || isSkipped(el) || el.children.length < 2) continue;
-      const group = w.__webtomateDetectGroup?.(el) ?? null;
+      const group = w.__thinklesslyDetectGroup?.(el) ?? null;
       if (!group || group.items.length < 2) continue;
       const size = measuredArea(group.scope);
       if (size.width < 80 || size.height < 24) continue;
@@ -138,7 +138,7 @@ export function sectionsInitScript() {
     return selected.slice(0, MAX_SECTIONS).map(({ el, kind }) => ({ el, label: labelOf(el), kind }));
   }
 
-  w.__webtomateDetectSections = detect;
+  w.__thinklesslyDetectSections = detect;
 }
 
 export function buildSectionsScript(): string {

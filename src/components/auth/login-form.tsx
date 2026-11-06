@@ -3,21 +3,20 @@
 import { useActionState, useState } from "react";
 import type { AuthFormState } from "@shared/auth";
 import { loginAction } from "@/lib/auth-actions";
+import { ArrowRightIcon } from "@/components/brand/icons";
 
 const initialState: AuthFormState = {};
-
-const inputClass =
-  "mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100";
 
 export function LoginForm() {
   const [state, formAction, pending] = useActionState(loginAction, initialState);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [visible, setVisible] = useState(false);
 
   return (
-    <form action={formAction} className="mt-6 space-y-4">
-      <div>
-        <label htmlFor="email" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+    <form action={formAction} className="mt-9 flex flex-col gap-5">
+      <div className="flex flex-col gap-2">
+        <label htmlFor="email" className="label">
           Email
         </label>
         <input
@@ -28,38 +27,58 @@ export function LoginForm() {
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className={inputClass}
+          placeholder="you@company.com"
+          className="field"
         />
       </div>
 
-      <div>
-        <label htmlFor="password" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Password
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          className={inputClass}
-        />
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor="password" className="label">
+            Password
+          </label>
+          <span
+            className="cursor-default text-sm font-medium text-[#5C6070] underline decoration-[#5C6070]/40 underline-offset-2"
+            title="Password reset is not available in this local build"
+          >
+            Forgot password?
+          </span>
+        </div>
+        <div className="relative">
+          <input
+            id="password"
+            name="password"
+            type={visible ? "text" : "password"}
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Enter your password"
+            className="field pr-[76px]"
+          />
+          <button
+            type="button"
+            onClick={() => setVisible((current) => !current)}
+            className="absolute right-2 top-2 h-9 rounded-lg px-3 text-sm font-semibold text-[#14151A] transition-colors hover:bg-[#F1F0EB]"
+            aria-label={visible ? "Hide password" : "Show password"}
+          >
+            {visible ? "Hide" : "Show"}
+          </button>
+        </div>
       </div>
 
       {state.error ? (
-        <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+        <p
+          role="alert"
+          className="animate-fade rounded-xl border border-[#F2C5C0] bg-[#FDE8E6] px-3.5 py-2.5 text-sm text-[#B42318]"
+        >
           {state.error}
         </p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-      >
-        {pending ? "Logging in..." : "Log in"}
+      <button type="submit" disabled={pending} className="btn btn-dark btn-lg mt-1 w-full">
+        {pending ? "Signing in..." : "Sign in"}
+        {!pending ? <ArrowRightIcon size={16} className="text-[#C8F23B]" /> : null}
       </button>
     </form>
   );

@@ -1,29 +1,48 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const display = localFont({
+  src: "./fonts/bricolage-grotesque-latin.woff2",
+  variable: "--font-bricolage",
+  weight: "200 800",
+  display: "swap",
+  fallback: ["Inter", "sans-serif"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const body = localFont({
+  src: "./fonts/inter-latin.woff2",
+  variable: "--font-inter",
+  weight: "400 600",
+  display: "swap",
+  fallback: ["system-ui", "sans-serif"],
+});
+
+const mono = localFont({
+  src: "./fonts/jetbrains-mono-latin.woff2",
+  variable: "--font-jetbrains",
+  weight: "400 500",
+  display: "swap",
+  fallback: ["ui-monospace", "monospace"],
 });
 
 export const metadata: Metadata = {
-  title: "Webtomate",
-  description: "Local-first browser automation",
+  title: {
+    default: "Thinklessly — Record once. Run anywhere.",
+    template: "%s | Thinklessly",
+  },
+  description:
+    "Thinklessly records your clicks in a real browser, captures tables and lists as clean JSON, then runs the whole flow on demand from your dashboard or a single API call.",
+  applicationName: "Thinklessly",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${display.variable} ${body.variable} ${mono.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );
 }

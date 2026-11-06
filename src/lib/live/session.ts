@@ -10,9 +10,9 @@ export type LiveSnapshot = {
 };
 
 type BridgeMessage =
-  | { __webtomate: "record"; payload: unknown }
-  | { __webtomate: "capture"; payload: { payload: unknown; selectionId?: string } }
-  | { __webtomate: "remove"; id: string };
+  | { __thinklessly: "record"; payload: unknown }
+  | { __thinklessly: "capture"; payload: { payload: unknown; selectionId?: string } }
+  | { __thinklessly: "remove"; id: string };
 
 export type LiveError = { message: string };
 
@@ -100,7 +100,7 @@ export class LiveRecorderSession {
   handleMessage(data: unknown): void {
     if (!data || typeof data !== "object") return;
     const message = data as Partial<BridgeMessage>;
-    if (message.__webtomate === "record") {
+    if (message.__thinklessly === "record") {
       const result = this.core.handleEvent((message as { payload: unknown }).payload);
       if (result) {
         this.lastInteractionAt = Date.now();
@@ -108,7 +108,7 @@ export class LiveRecorderSession {
       }
       return;
     }
-    if (message.__webtomate === "capture") {
+    if (message.__thinklessly === "capture") {
       const envelope = (message as { payload?: { payload?: unknown; selectionId?: string } }).payload;
       const outcome = this.core.handleCapture(envelope?.payload, envelope?.selectionId);
       if (!outcome.ok) {
@@ -120,7 +120,7 @@ export class LiveRecorderSession {
       this.emit();
       return;
     }
-    if (message.__webtomate === "remove") {
+    if (message.__thinklessly === "remove") {
       const id = (message as { id: string }).id;
       const stepId = this.core.removeCapture(id);
       if (!stepId) return;

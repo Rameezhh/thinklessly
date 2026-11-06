@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-label="Thinklessly">
+  <rect width="40" height="40" rx="11" fill="#0E0F13"/>
+  <rect x="10" y="11" width="20" height="5.5" rx="2.75" fill="#FFFFFF"/>
+  <rect x="17.25" y="11" width="5.5" height="19" rx="2.75" fill="#FFFFFF"/>
+  <circle cx="31" cy="31" r="5.5" fill="#C8F23B" stroke="#0E0F13" stroke-width="2.5"/>
+</svg>

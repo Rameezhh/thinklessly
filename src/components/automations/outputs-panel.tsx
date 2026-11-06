@@ -11,8 +11,7 @@ type Edit =
   | { id: string; type: "extract"; outputKey: string }
   | { id: string; type: "extractStructured"; root: ExtractField };
 
-const inputClass =
-  "w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 font-mono text-xs text-zinc-900 outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-400 dark:focus:ring-zinc-800";
+const inputClass = "field field-sm";
 
 function initialEdits(steps: ExtractStep[]): Edit[] {
   return steps.map((step) =>
@@ -56,9 +55,9 @@ export function OutputsPanel({
 
   if (steps.length === 0) {
     return (
-      <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">JSON outputs</h2>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+      <section className="card">
+        <h2 className="card-title">JSON outputs</h2>
+        <p className="card-desc">
           This automation does not extract any data yet. Re-record it with “Capture data from page” enabled to
           select a table, list, cards, or any element.
         </p>
@@ -67,10 +66,10 @@ export function OutputsPanel({
   }
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <section className="card">
       <div>
-        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">JSON outputs</h2>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        <h2 className="card-title">JSON outputs</h2>
+        <p className="card-desc">
           Rename keys here at any time. Saving creates a new version; older runs keep their original keys. Each
           run reads fresh values from the page.
         </p>
@@ -83,9 +82,9 @@ export function OutputsPanel({
           if (edit.type === "extract") {
             const valid = outputKeySchema.safeParse(edit.outputKey).success;
             return (
-              <div key={edit.id} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+              <div key={edit.id} className="rounded-2xl border border-[#E5E4DE] bg-white p-4">
                 <label className="flex max-w-sm flex-col gap-1">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  <span className="mono text-[11px] uppercase tracking-[0.06em] text-[#5C6070]">
                     Output / JSON key
                   </span>
                   <input
@@ -100,7 +99,7 @@ export function OutputsPanel({
                       )
                     }
                     spellCheck={false}
-                    className={`${inputClass} ${valid ? "" : "border-red-400 dark:border-red-700"}`}
+                    className={`${inputClass} ${valid ? "" : "!border-[#B42318]"}`}
                   />
                 </label>
               </div>
@@ -124,7 +123,7 @@ export function OutputsPanel({
         })}
 
         {issues.length > 0 ? (
-          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+          <p className="rounded-xl border border-[#CFE58A] bg-[#FAFDEB] px-4 py-3 text-sm text-[#3F5A00]">
             {issues[0]}
             {issues.length > 1 ? ` (+${issues.length - 1} more)` : ""}
           </p>
@@ -133,14 +132,14 @@ export function OutputsPanel({
         {state.error ? (
           <p
             role="alert"
-            className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+            className="rounded-xl border border-[#F2C5C0] bg-[#FDE8E6] px-4 py-3 text-sm text-[#B42318]"
           >
             {state.error}
           </p>
         ) : null}
 
         {state.success ? (
-          <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
+          <p className="rounded-xl border border-emerald-200 bg-[#FAFDEB] px-4 py-3 text-sm text-[#0B6B43]">
             {state.success}
           </p>
         ) : null}
@@ -148,7 +147,7 @@ export function OutputsPanel({
         <button
           type="submit"
           disabled={saving || !changed || issues.length > 0}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          className="btn btn-dark"
         >
           {saving ? "Saving..." : "Save output keys"}
         </button>

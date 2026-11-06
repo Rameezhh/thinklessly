@@ -36,25 +36,25 @@ export function FieldAddForm({
           {secret ? "Add credential field" : "Add payload field"}
         </Button>
         {state.success ? (
-          <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{state.success}</p>
+          <p className="text-xs font-medium text-[#0B6B43]">{state.success}</p>
         ) : null}
         {state.error ? (
-          <p className="text-xs font-medium text-rose-600 dark:text-rose-400">{state.error}</p>
+          <p className="text-xs font-medium text-[#B42318]">{state.error}</p>
         ) : null}
       </div>
     );
   }
 
   return (
-    <form action={formAction} className="animate-fade space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-900/40">
+    <form action={formAction} className="animate-fade space-y-3 rounded-2xl border border-[#E5E4DE] bg-[#FBFBF9] p-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+        <p className="mono text-[11px] uppercase tracking-[0.12em] text-[#5C6070]">
           {secret ? "New credential field" : "New payload field"}
         </p>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-200/70 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+          className="rounded-lg p-1 text-[#8A8E9E] transition-colors hover:bg-[#EFEEE8] hover:text-[#14151A]"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
@@ -105,7 +105,7 @@ export function FieldAddForm({
       </div>
 
       {!secret ? (
-        <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300">
+        <label className="flex items-center gap-2 text-xs text-[#5C6070]">
           <Checkbox name="required" />
           Required when no default is available
         </label>
@@ -117,7 +117,7 @@ export function FieldAddForm({
       </div>
 
       {state.error ? (
-        <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:bg-rose-950/50 dark:text-rose-300">
+        <p role="alert" className="rounded-xl border border-[#F2C5C0] bg-[#FDE8E6] px-3 py-2 text-xs text-[#B42318]">
           {state.error}
         </p>
       ) : null}

@@ -50,9 +50,9 @@ export async function sendRunWebhook(runId: string): Promise<void> {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "User-Agent": "Webtomate/1.0",
-          "X-Webtomate-Event": "run.finished",
-          "X-Webtomate-Signature": `sha256=${signature}`,
+          "User-Agent": "Thinklessly/1.0",
+          "X-Thinklessly-Event": "run.finished",
+          "X-Thinklessly-Signature": `sha256=${signature}`,
         },
         body,
         signal: AbortSignal.timeout(10000),

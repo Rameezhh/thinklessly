@@ -1,5 +1,5 @@
 {
-  "name": "webtomate",
+  "name": "thinklessly",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -21,6 +21,15 @@
     "gen:key": "tsx scripts/gen-key.ts",
     "run-file": "tsx worker/run-file.ts",
     "enqueue-test": "tsx scripts/enqueue-test.ts",
+    "sim:tls": "node scripts/local-tls.mjs",
+    "sim:build": "pnpm build:live && node scripts/sim-build.mjs",
+    "sim:web": "next start -p 3010",
+    "sim:worker": "tsx worker/index.ts",
+    "sim:wisp": "tsx live/wisp-server.ts",
+    "sim:proxy": "node scripts/local-proxy.mjs",
+    "sim:start": "concurrently -k -n web,worker,wisp,proxy -c cyan,magenta,yellow,green \"pnpm sim:web\" \"pnpm sim:worker\" \"pnpm sim:wisp\" \"pnpm sim:proxy\"",
+    "sim:setup": "pnpm ensure:data && pnpm sim:tls && pnpm db:generate && prisma migrate deploy",
+    "sim": "pnpm sim:setup && pnpm sim:build && pnpm sim:start",
     "db:migrate": "pnpm ensure:data && prisma migrate dev",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate"

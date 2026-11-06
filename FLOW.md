@@ -24,8 +24,8 @@ developer machine; the recording browser is a **server-side headful Chromium**.
 - `RecorderSession.start()`:
   - launches **headful Chromium** (`chromium.launch({ headless: false })`,
     `viewport: null`),
-  - registers Playwright bindings: `__webtomateRecord` (always),
-    `__webtomateCapture` and `__webtomateRemove` (when `captureData`),
+  - registers Playwright bindings: `__thinklesslyRecord` (always),
+    `__thinklesslyCapture` and `__thinklesslyRemove` (when `captureData`),
   - injects init scripts: `buildRecorderScript()` always, plus
     `buildInferScript()`, `buildSectionsScript()`, `buildToolbarScript()` when
     `captureData`,
@@ -34,9 +34,9 @@ developer machine; the recording browser is a **server-side headful Chromium**.
 ## 3. Toolbar overlay (`worker/recorder/toolbar.ts`)
 
 Injected into the target page (only when `window.top === window`) as a
-closed-shadow-DOM host carrying `[data-webtomate-ui]`. It renders:
+closed-shadow-DOM host carrying `[data-thinklessly-ui]`. It renders:
 
-- a floating "Webtomate data" panel top-right, collapsible to a round FAB,
+- a floating "Thinklessly data" panel top-right, collapsible to a round FAB,
 - a hover highlight box with a tag describing the hovered element,
 - coloured, labelled candidate boxes over detected sections,
 - a toast for feedback.
@@ -44,15 +44,15 @@ closed-shadow-DOM host carrying `[data-webtomate-ui]`. It renders:
 "Select data" turns on **pick mode**:
 
 - `mousemove` highlights the element under the cursor,
-- `renderCandidates()` calls `__webtomateDetectSections()` and draws clickable
+- `renderCandidates()` calls `__thinklesslyDetectSections()` and draws clickable
   boxes over detected tables / forms / lists / objects,
 - clicking a candidate or any element calls `classify()`:
-  - `__webtomateInferAuto(el)` returns a plan → payload
+  - `__thinklesslyInferAuto(el)` returns a plan → payload
     `{ kind: "structured", container, root }`,
   - otherwise → payload `{ kind: "single", element, attribute: "text" }`.
-- The payload is sent via `__webtomateCapture({ payload, selectionId })`.
+- The payload is sent via `__thinklesslyCapture({ payload, selectionId })`.
 - The selections list shows `single`/`data` badges, supports remove, "Add
-  another selection", "Done" (confirm) and "Cancel" (sends `__webtomateRemove`).
+  another selection", "Done" (confirm) and "Cancel" (sends `__thinklesslyRemove`).
 
 ## 4. Selector + action tracking (`worker/recorder/script.ts`)
 
@@ -67,7 +67,7 @@ closed-shadow-DOM host carrying `[data-webtomate-ui]`. It renders:
   - change → `select` / `check` / `upload` / `fill`
     (password inputs send `secret: true` and a blank value),
   - Enter → `{ kind: "press", key: "Enter" }`.
-- Every event is sent via `__webtomateRecord(payload)`.
+- Every event is sent via `__thinklesslyRecord(payload)`.
 
 ## 5. Server-side step building (`worker/recorder/session.ts`)
 

@@ -23,14 +23,7 @@ type Phase = "setup" | "launched" | "starting" | "recording" | "stopped";
 
 const NAVIGATION_TIMEOUT_MS = 20_000;
 
-const inputClass =
-  "w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-400 dark:focus:ring-zinc-800";
-
-const primaryButton =
-  "rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300";
-
-const secondaryButton =
-  "rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900";
+const inputClass = "field";
 
 const emptySnapshot: LiveSnapshot = { fields: [], steps: [], previews: {}, previewTotals: {} };
 
@@ -71,8 +64,8 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
 
   useEffect(() => {
     function onMessage(event: MessageEvent) {
-      const data = event.data as { __webtomate?: string } | undefined;
-      if (!data || typeof data.__webtomate !== "string") return;
+      const data = event.data as { __thinklessly?: string } | undefined;
+      if (!data || typeof data.__thinklessly !== "string") return;
       sessionRef.current?.handleMessage(data);
     }
     window.addEventListener("message", onMessage);
@@ -283,36 +276,39 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
 
   if (fullscreen) {
     return (
-      <div className="fixed inset-0 bg-white dark:bg-black">
+      <div className="fixed inset-0 bg-white">
         <div ref={containerRef} className="h-full w-full" />
 
         {phase === "starting" ? (
-          <div className="fixed inset-0 z-30 flex items-center justify-center bg-white text-sm text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+          <div className="fixed inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-[#F7F7F4] text-sm text-[#5C6070]">
+            <span className="h-7 w-7 animate-spin rounded-full border-2 border-[#0E0F13] border-t-transparent" />
             Loading the live site...
           </div>
         ) : null}
 
         {error ? (
-          <div className="fixed left-1/2 top-3 z-40 max-w-[min(90vw,32rem)] -translate-x-1/2 rounded-md bg-red-600 px-4 py-2 text-sm text-white shadow-lg">
+          <div className="animate-fade fixed left-1/2 top-3 z-40 max-w-[min(90vw,32rem)] -translate-x-1/2 rounded-xl bg-[#B42318] px-4 py-2.5 text-sm text-white shadow-lg">
             {error}
           </div>
         ) : null}
 
         {phase === "recording" && !failure ? (
-          <div className="fixed bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border border-zinc-200 bg-white/95 px-2 py-1.5 text-sm shadow-lg backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
-            <span className="ml-2 h-2 w-2 animate-pulse rounded-full bg-red-500" />
-            <span className="font-medium text-zinc-700 dark:text-zinc-300">Recording</span>
+          <div className="animate-rise fixed bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-2xl bg-[#0E0F13] p-2 shadow-[0_18px_50px_rgba(14,15,19,0.4)]">
+            <span className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-white">
+              <span className="animate-pulse-dot h-2.5 w-2.5 rounded-full bg-[#FF5A4D]" />
+              Recording
+            </span>
             <button
               type="button"
               onClick={endRecording}
-              className="rounded-full bg-zinc-900 px-3 py-1 text-xs font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
+              className="rounded-[10px] bg-[#C8F23B] px-3.5 py-2 text-[13px] font-semibold text-[#0E0F13] transition-transform hover:-translate-y-0.5"
             >
               End automation
             </button>
             <button
               type="button"
               onClick={exitSession}
-              className="rounded-full px-3 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              className="rounded-[10px] px-3 py-2 text-[13px] font-medium text-[#C9CCD6] transition-colors hover:bg-white/5 hover:text-white"
             >
               Cancel
             </button>
@@ -320,21 +316,21 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
         ) : null}
 
         {failure ? (
-          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl dark:bg-zinc-950">
-              <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{failure.title}</h2>
-              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{failure.message}</p>
-              <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]">
+            <div className="animate-rise w-full max-w-md rounded-3xl border border-[#E5E4DE] bg-white p-6 shadow-2xl">
+              <h2 className="display text-[24px] tracking-[-0.02em]">{failure.title}</h2>
+              <p className="mt-2.5 text-sm leading-relaxed text-[#5C6070]">{failure.message}</p>
+              <p className="mt-4 rounded-xl border border-[#CFE58A] bg-[#FAFDEB] px-3.5 py-2.5 text-xs leading-relaxed text-[#3F5A00]">
                 TODO: add a companion-app/extension fallback for sites the proxy cannot render.
               </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button type="button" onClick={retryFrame} className={primaryButton}>
+              <div className="mt-5 flex flex-wrap gap-2.5">
+                <button type="button" onClick={retryFrame} className="btn btn-dark btn-sm">
                   Retry
                 </button>
-                <button type="button" onClick={exitSession} className={secondaryButton}>
+                <button type="button" onClick={exitSession} className="btn btn-outline btn-sm">
                   Close
                 </button>
-                <button type="button" onClick={endRecording} className={secondaryButton}>
+                <button type="button" onClick={endRecording} className="btn btn-outline btn-sm">
                   End automation
                 </button>
               </div>
@@ -343,11 +339,15 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
         ) : null}
 
         {phase === "stopped" ? (
-          <div className="fixed inset-0 z-40 flex justify-end bg-black/40">
-            <div className="h-full w-full max-w-2xl overflow-auto bg-white p-5 shadow-2xl dark:bg-zinc-950">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Review and save</h2>
-                <button type="button" onClick={() => window.location.reload()} className={secondaryButton}>
+          <div className="fixed inset-0 z-40 flex justify-end bg-black/40 backdrop-blur-[2px]">
+            <div className="animate-slide-left h-full w-full max-w-2xl overflow-auto bg-[#F7F7F4] p-5 sm:p-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="display text-[26px] tracking-[-0.02em]">Review and save</h2>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="btn btn-outline btn-sm"
+                >
                   Start over
                 </button>
               </div>
@@ -376,85 +376,88 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
   }
 
   return (
-    <div className="space-y-4">
-      <section className="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-        <div>
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">1. Start here</h2>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            The real site opens full screen in a new tab. Use the floating toolbar to capture data and interact
-            with the page to record steps. Come back here after you close that tab.
-          </p>
-        </div>
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center gap-3">
+        <span className="mono flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[#0E0F13] text-[13px] text-[#C8F23B]">
+          1
+        </span>
+        <h2 className="display text-[24px] font-bold tracking-[-0.02em]">Start here</h2>
+      </div>
+      <p className="-mt-2 text-[15px] leading-[1.6] text-[#5C6070]">
+        The real site opens full screen in a new tab. Use the floating toolbar to capture data and
+        interact with the page to record steps. Come back here after you close that tab.
+      </p>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <label htmlFor="live-name" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Automation name
-            </label>
-            <input
-              id="live-name"
-              type="text"
-              maxLength={120}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              disabled={phase !== "setup" && phase !== "launched"}
-              placeholder="Login to my account"
-              className={inputClass}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="live-url" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Starting URL
-            </label>
-            <input
-              id="live-url"
-              type="url"
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              disabled={phase !== "setup" && phase !== "launched"}
-              placeholder="https://example.com"
-              className={inputClass}
-            />
-          </div>
-        </div>
-
-        <label className="flex items-start gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
+      <div className="flex flex-wrap gap-[18px]">
+        <div className="flex min-w-0 flex-[1_1_220px] flex-col gap-2">
+          <label htmlFor="live-name" className="label">
+            Automation name
+          </label>
           <input
-            type="checkbox"
-            checked={captureData}
-            onChange={(event) => setCaptureData(event.target.checked)}
+            id="live-name"
+            type="text"
+            maxLength={120}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
             disabled={phase !== "setup" && phase !== "launched"}
-            className="mt-0.5 h-4 w-4 rounded border-zinc-300 dark:border-zinc-700"
+            placeholder="Login to my account"
+            className={inputClass}
           />
-          <span>
-            <span className="font-medium text-zinc-800 dark:text-zinc-200">Capture data from page</span>
-            <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
-              Shows the Webtomate toolbar over the live site so you can save any table, list, card or section as
-              fresh JSON on every run.
-            </span>
-          </span>
-        </label>
-
-        {error ? (
-          <p
-            role="alert"
-            className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
-          >
-            {error}
-          </p>
-        ) : null}
-
-        <div className="flex flex-wrap items-center gap-3">
-          <button type="button" onClick={launchNewTab} className={primaryButton}>
-            Start recording
-          </button>
-          {phase === "launched" ? (
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Opened in a new full-screen tab. Finish and save there.
-            </p>
-          ) : null}
         </div>
-      </section>
+        <div className="flex min-w-0 flex-[1_1_220px] flex-col gap-2">
+          <label htmlFor="live-url" className="label">
+            Starting URL
+          </label>
+          <input
+            id="live-url"
+            type="url"
+            value={url}
+            onChange={(event) => setUrl(event.target.value)}
+            disabled={phase !== "setup" && phase !== "launched"}
+            placeholder="https://example.com"
+            className={inputClass}
+          />
+        </div>
+      </div>
+
+      <label className="flex cursor-pointer items-start gap-3.5 rounded-2xl border-[1.5px] border-[#CFE58A] bg-[#FAFDEB] px-5 py-4">
+        <input
+          type="checkbox"
+          checked={captureData}
+          onChange={(event) => setCaptureData(event.target.checked)}
+          disabled={phase !== "setup" && phase !== "launched"}
+          className="mt-0.5 h-5 w-5 shrink-0 rounded accent-[#0E0F13]"
+        />
+        <span>
+          <span className="block text-base font-semibold text-[#14151A]">Capture data from page</span>
+          <span className="mt-1 block text-sm leading-[1.55] text-[#4A4E5C]">
+            Shows the Thinklessly toolbar over the live site so you can save any table, list, card or
+            section as fresh JSON on every run.
+          </span>
+        </span>
+      </label>
+
+      {error ? (
+        <p
+          role="alert"
+          className="animate-fade rounded-xl border border-[#F2C5C0] bg-[#FDE8E6] px-3.5 py-2.5 text-sm text-[#B42318]"
+        >
+          {error}
+        </p>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-4">
+        <button type="button" onClick={launchNewTab} className="btn btn-dark btn-lg">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#FF5A4D]" />
+          Start recording
+        </button>
+        <span className="text-sm text-[#5C6070]">Opens the site in a new tab</span>
+        {phase === "launched" ? (
+          <span className="animate-fade mono w-full text-[12px] text-[#3F5A00]">
+            Opened in a new full-screen tab. Finish and save there.
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }

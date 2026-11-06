@@ -5,7 +5,7 @@ import { LiveRecorder } from "@/components/live/live-recorder";
 import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = {
-  title: "Live session | Webtomate",
+  title: "Live session ",
 };
 
 type SearchParams = Promise<{
@@ -36,15 +36,15 @@ async function LiveContent({ searchParams }: { searchParams: SearchParams }) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-6">
+    <div className="">
       <div className="mb-5">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Live session</h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        <h1 className="display text-[28px] leading-[1.1] tracking-[-0.03em]">Live session</h1>
+        <p className="mt-1.5 text-sm text-[#5C6070]">
           The real site opens full screen in a new tab. Record actions and capture page data without any
           screen mirroring.
         </p>
       </div>
       <LiveRecorder initialUrl={url} initialName={name} />
-    </main>
+    </div>
   );
 }

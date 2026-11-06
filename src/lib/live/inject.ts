@@ -6,14 +6,14 @@ import { buildToolbarScript } from "@worker/recorder/toolbar";
 /**
  * Bridge that forwards the recorder's Playwright bindings over postMessage to
  * the parent /live page. Runs inside the proxied (same-origin) iframe before
- * the recorder scripts so their `window.__webtomate*` calls are wired up.
+ * the recorder scripts so their `window.__thinklessly*` calls are wired up.
  */
 const BRIDGE = `(() => {
   const w = window;
-  w.__webtomateAllowFrame = true;
-  w.__webtomateRecord = (payload) => parent.postMessage({ __webtomate: "record", payload }, "*");
-  w.__webtomateCapture = (payload) => parent.postMessage({ __webtomate: "capture", payload }, "*");
-  w.__webtomateRemove = (id) => parent.postMessage({ __webtomate: "remove", id }, "*");
+  w.__thinklesslyAllowFrame = true;
+  w.__thinklesslyRecord = (payload) => parent.postMessage({ __thinklessly: "record", payload }, "*");
+  w.__thinklesslyCapture = (payload) => parent.postMessage({ __thinklessly: "capture", payload }, "*");
+  w.__thinklesslyRemove = (id) => parent.postMessage({ __thinklessly: "remove", id }, "*");
 })();`;
 
 export function recorderBundle(captureData = true): string {
@@ -27,7 +27,7 @@ export function injectRecorder(doc: Document | null, captureData = true): boolea
   if (!doc || !doc.documentElement) return false;
   const target = doc.head ?? doc.documentElement;
   const script = doc.createElement("script");
-  script.setAttribute("data-webtomate-recorder", "");
+  script.setAttribute("data-thinklessly-recorder", "");
   script.textContent = recorderBundle(captureData);
   target.appendChild(script);
   script.remove();

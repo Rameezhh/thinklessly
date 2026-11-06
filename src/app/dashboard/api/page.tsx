@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { prisma } from "@shared/db";
 import { ApiKeysPanel, type ApiKeyRow } from "@/components/api/api-keys-panel";
+import { QuickStart } from "@/components/api/quick-start";
 import { WebhookPanel } from "@/components/api/webhook-panel";
 import { PageLoading } from "@/components/dashboard/page-loading";
 import { formatDateTime } from "@/lib/format";
 import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = {
-  title: "API | Webtomate",
+  title: "API",
 };
 
 export default function ApiPage() {
@@ -42,63 +43,35 @@ async function ApiContent() {
     revokedAt: key.revokedAt ? formatDateTime(key.revokedAt) : null,
   }));
 
-  const baseUrl = `http://localhost:${process.env.PORT ?? "3000"}`;
+  const baseUrl = process.env.APP_BASE_URL ?? `http://localhost:${process.env.PORT ?? "3000"}`;
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-10">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">API</h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Run automations from any script with an API key. Secrets are encrypted in transit storage and never
-            returned.
-          </p>
-        </div>
+    <div className="max-w-[880px]">
+      <h1 className="display text-[34px] leading-[1.05] tracking-[-0.035em] sm:text-[44px]">API</h1>
+      <p className="mt-2.5 text-base leading-[1.55] text-[#5C6070]">
+        Run automations from any script with an API key. Secrets are encrypted in transit and storage
+        and never returned.
+      </p>
 
+      <div className="mt-9 space-y-6">
         <ApiKeysPanel keys={rows} />
-        <WebhookPanel initialUrl={team?.webhookUrl ?? ""} hasSecret={Boolean(team?.webhookSecretCipher)} />
+        <WebhookPanel
+          initialUrl={team?.webhookUrl ?? ""}
+          hasSecret={Boolean(team?.webhookSecretCipher)}
+        />
 
-        <section className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Quick start</h2>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              Replace the automation id and API key. Add <code>?wait=30</code> to wait for completion.
+        <section className="card">
+          <div className="card-head">
+            <h2 className="card-title">Quick start</h2>
+            <p className="card-desc">
+              Replace the automation id and API key. Add{" "}
+              <code className="mono rounded-md bg-[#F1F0EB] px-1.5 py-0.5 text-[12px]">?wait=30</code>{" "}
+              to wait for completion.
             </p>
           </div>
-          <div className="space-y-4 px-5 py-4">
-            <div>
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Start a run
-              </p>
-              <pre className="overflow-x-auto rounded-lg bg-zinc-950 p-4 font-mono text-xs leading-relaxed text-zinc-100 dark:bg-black">
-{`curl -X POST ${baseUrl}/api/v1/automations/<automation-id>/runs \\
-  -H "Authorization: Bearer wtm_..." \\
-  -H "Content-Type: application/json" \\
-  -H "Idempotency-Key: order-123" \\
-  -d '{"inputs":{},"secrets":{}}'`}
-              </pre>
-            </div>
-            <div>
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Fetch a run and wait up to 30 seconds
-              </p>
-              <pre className="overflow-x-auto rounded-lg bg-zinc-950 p-4 font-mono text-xs leading-relaxed text-zinc-100 dark:bg-black">
-{`curl -H "Authorization: Bearer wtm_..." \\
-  "${baseUrl}/api/v1/runs/<run-id>?wait=30"`}
-              </pre>
-            </div>
-            <div>
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Cancel a run
-              </p>
-              <pre className="overflow-x-auto rounded-lg bg-zinc-950 p-4 font-mono text-xs leading-relaxed text-zinc-100 dark:bg-black">
-{`curl -X POST -H "Authorization: Bearer wtm_..." \\
-  ${baseUrl}/api/v1/runs/<run-id>/cancel`}
-              </pre>
-            </div>
-          </div>
+          <QuickStart baseUrl={baseUrl} />
         </section>
       </div>
-    </main>
+    </div>
   );
 }

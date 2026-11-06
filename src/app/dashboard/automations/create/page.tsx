@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { ArrowLeftIcon } from "@/components/brand/icons";
+import { CreateAside } from "@/components/automations/create-aside";
 import { RecorderPanel } from "@/components/automations/recorder-panel";
 import { PageLoading } from "@/components/dashboard/page-loading";
 import { LiveRecorder } from "@/components/live/live-recorder";
 import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = {
-  title: "Create automation | Webtomate",
+  title: "Create automation",
 };
 
 const liveRecorder = process.env.LIVE_RECORDER !== "false";
@@ -22,49 +24,30 @@ export default function CreateAutomationPage() {
 
 async function CreateAutomationContent() {
   await requireUser();
-
-  if (liveRecorder) {
-    return (
-      <main className="mx-auto w-full max-w-7xl px-4 py-10">
-        <div className="space-y-6">
-          <div>
-            <Link
-              href="/dashboard/automations"
-              className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-            >
-              ← Automations
-            </Link>
-            <h1 className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Create automation</h1>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Enter the starting URL, use the live site and floating toolbar, then click End automation.
-            </p>
-          </div>
-          <LiveRecorder initialUrl="" />
-        </div>
-      </main>
-    );
-  }
-
   const recorderPort = process.env.RECORDER_PORT ?? "4001";
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-10">
-      <div className="space-y-6">
-        <div>
-          <Link
-            href="/dashboard/automations"
-            className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-          >
-            ← Automations
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Create automation</h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Enter the starting URL, record your actions in the browser window that opens, then click End automation.
-          </p>
-        </div>
+    <div>
+      <Link
+        href="/dashboard/automations"
+        className="link-arrow inline-flex items-center gap-2 text-[14px] font-semibold text-[#5C6070] transition-colors hover:text-[#14151A]"
+      >
+        <ArrowLeftIcon size={14} />
+        Automations
+      </Link>
+      <h1 className="display mt-4 text-[34px] leading-[1.05] tracking-[-0.035em] sm:text-[44px]">
+        Create automation
+      </h1>
+      <p className="mt-2.5 max-w-[600px] text-base leading-[1.55] text-[#5C6070]">
+        Enter the starting URL, use the live site and floating toolbar, then click End automation.
+      </p>
 
-        <RecorderPanel recorderPort={recorderPort} />
+      <div className="mt-9 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="rounded-3xl border border-[#E5E4DE] bg-white p-6 sm:p-9">
+          {liveRecorder ? <LiveRecorder initialUrl="" /> : <RecorderPanel recorderPort={recorderPort} />}
+        </div>
+        <CreateAside />
       </div>
-    </main>
+    </div>
   );
 }

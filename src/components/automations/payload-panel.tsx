@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, KeyRound, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useActionState, useMemo, useState } from "react";
 import type { Field, Step } from "@shared/definition";
 import { fieldsUsedBySteps } from "@shared/fields";
@@ -9,7 +9,7 @@ import {
   savePayloadDefaultsAction,
   type FieldPanelState,
 } from "@/lib/automation-field-actions";
-import { Button } from "@/components/ui/button";
+import { CheckIcon, CopyIcon } from "@/components/brand/icons";
 import { Card, CardBody, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input, Label } from "@/components/ui/input";
@@ -100,26 +100,27 @@ export function PayloadPanel({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <CardTitle className="flex items-center gap-2">
-            <KeyRound className="h-4 w-4 text-indigo-500" aria-hidden />
-            Payload
-          </CardTitle>
+          <CardTitle>Payload</CardTitle>
           <CardDescription>
-            Every recorded input is included automatically. Recorded values become optional defaults; supplied
-            values always win.
+            Every recorded input is included automatically. Recorded values become optional defaults;
+            supplied values always win.
           </CardDescription>
         </div>
-        <Button type="button" variant="secondary" size="sm" onClick={() => void copy(payloadJson, "json")}>
-          {copied === "json" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+        <button
+          type="button"
+          onClick={() => void copy(payloadJson, "json")}
+          className="btn btn-outline btn-sm"
+        >
+          {copied === "json" ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
           {copied === "json" ? "Copied" : "Copy JSON"}
-        </Button>
+        </button>
       </CardHeader>
 
-      <CardBody className="space-y-4">
+      <CardBody className="space-y-5">
         {editable.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-zinc-300 px-4 py-4 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+          <div className="rounded-2xl border-[1.5px] border-dashed border-[#D8D6CE] px-5 py-5 text-sm text-[#5C6070]">
             <p>No payload fields yet. Record an input or add a field below.</p>
             {credentials.length > 0 ? (
               <p className="mt-1">
@@ -128,7 +129,7 @@ export function PayloadPanel({
             ) : null}
           </div>
         ) : (
-          <form action={formAction} className="space-y-4">
+          <form action={formAction} className="space-y-5">
             <input type="hidden" name="values" value={JSON.stringify(values)} readOnly />
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -141,7 +142,7 @@ export function PayloadPanel({
                     formAction={deleteFieldAction.bind(null, automationId, field.key)}
                     disabled={!deletable}
                     title={deletable ? "Delete field" : "This field is used by a step"}
-                    className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-rose-950/50"
+                    className="rounded-lg p-1.5 text-[#8A8E9E] transition-colors hover:bg-[#FDE8E6] hover:text-[#B42318] disabled:cursor-not-allowed disabled:opacity-30"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -151,35 +152,35 @@ export function PayloadPanel({
                   return (
                     <div
                       key={field.key}
-                      className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950"
+                      className="flex items-center gap-2.5 rounded-xl border border-[#E5E4DE] bg-white px-3.5 py-2.5"
                     >
                       <Checkbox
                         id={id}
                         checked={values[field.key] === "true"}
                         onChange={(event) => update(field.key, event.target.checked ? "true" : "false")}
                       />
-                      <label htmlFor={id} className="min-w-0 flex-1 text-sm text-zinc-700 dark:text-zinc-300">
+                      <label htmlFor={id} className="min-w-0 flex-1 text-sm text-[#14151A]">
                         {field.label}
                       </label>
-                      <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">{field.key}</span>
+                      <span className="mono text-[11px] text-[#5C6070]">{field.key}</span>
                       {remove}
                     </div>
                   );
                 }
 
                 return (
-                  <div key={field.key} className="space-y-1">
+                  <div key={field.key} className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor={id}>
+                      <Label htmlFor={id} className="text-[13px]">
                         {field.label}
                         {field.type === "file" ? (
-                          <span className="ml-1 text-[10px] uppercase tracking-wide text-zinc-400">path</span>
+                          <span className="mono ml-1 text-[10px] uppercase tracking-wide text-[#8A8E9E]">
+                            path
+                          </span>
                         ) : null}
                       </Label>
                       <div className="flex items-center gap-1">
-                        <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
-                          {field.key}
-                        </span>
+                        <span className="mono text-[11px] text-[#5C6070]">{field.key}</span>
                         {remove}
                       </div>
                     </div>
@@ -191,6 +192,7 @@ export function PayloadPanel({
                       placeholder={
                         field.type === "number" ? "0" : field.type === "file" ? "/path/to/file" : ""
                       }
+                      className="field-sm"
                     />
                   </div>
                 );
@@ -198,67 +200,61 @@ export function PayloadPanel({
             </div>
 
             {credentials.length > 0 ? (
-              <p className="rounded-xl bg-indigo-50/70 px-3 py-2 text-xs text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-200">
-                {credentials.length} credential(s) are attached automatically and never appear in this payload:{" "}
-                {credentials.map((field) => field.key).join(", ")}.
+              <p className="rounded-xl bg-[#FAFDEB] px-3.5 py-2.5 text-xs leading-relaxed text-[#3F5A00]">
+                {credentials.length} credential(s) are attached automatically and never appear in this
+                payload: {credentials.map((field) => field.key).join(", ")}.
               </p>
             ) : null}
 
             <div>
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="mono text-[11px] uppercase tracking-[0.12em] text-[#5C6070]">
                   API request
                 </p>
                 <button
                   type="button"
                   onClick={() => void copy(curl, "curl")}
-                  className="text-xs font-medium text-indigo-600 transition-colors hover:text-indigo-500 dark:text-indigo-400"
+                  className="text-xs font-semibold text-[#14151A] underline underline-offset-2 transition-colors hover:text-[#3F5A00]"
                 >
                   {copied === "curl" ? "Copied" : "Copy curl"}
                 </button>
               </div>
-              <pre className="max-h-44 overflow-auto rounded-xl bg-zinc-950 p-4 font-mono text-[11px] leading-relaxed text-zinc-100 ring-1 ring-white/5 dark:bg-black">
-                {curl}
-              </pre>
+              <pre className="code-block max-h-44 overflow-auto text-[11px]">{curl}</pre>
             </div>
 
             <div>
-              <p className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+              <p className="mono mb-2 text-[11px] uppercase tracking-[0.12em] text-[#5C6070]">
                 payload.json
               </p>
-              <pre className="max-h-56 overflow-auto rounded-xl bg-zinc-950 p-4 font-mono text-[11px] leading-relaxed text-zinc-100 ring-1 ring-white/5 dark:bg-black">
-                {payloadJson}
-              </pre>
+              <pre className="code-block max-h-56 overflow-auto text-[11px]">{payloadJson}</pre>
             </div>
 
             {state.error ? (
               <p
                 role="alert"
-                className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"
+                className="rounded-xl border border-[#F2C5C0] bg-[#FDE8E6] px-3.5 py-2.5 text-sm text-[#B42318]"
               >
                 {state.error}
               </p>
             ) : null}
             {state.success ? (
-              <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+              <p className="rounded-xl border border-[#CFE58A] bg-[#FAFDEB] px-3.5 py-2.5 text-sm text-[#3F5A00]">
                 {state.success}
               </p>
             ) : null}
 
-            <Button type="submit" loading={saving}>
+            <button type="submit" disabled={saving} className="btn btn-dark">
               {saving ? "Saving..." : "Save payload defaults"}
-            </Button>
+            </button>
           </form>
         )}
 
         <FieldAddForm automationId={automationId} kind="payload" />
       </CardBody>
 
-      <CardFooter className="justify-between gap-2">
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          Values supplied by the API or a manual run override the defaults.
-        </p>
-        <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">{editable.length} field(s)</span>
+      <CardFooter>
+        <p>Values supplied by the API or a manual run override the defaults.</p>
+        <span className="mono font-medium text-[#8A8E9E]">{editable.length} field(s)</span>
       </CardFooter>
     </Card>
   );

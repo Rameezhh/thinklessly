@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowLeftIcon } from "@/components/brand/icons";
 import { Suspense } from "react";
 import exampleExtract from "@shared/examples/example-extract.json";
 import exampleLogin from "@shared/examples/example-login.json";
@@ -9,7 +10,7 @@ import { PageLoading } from "@/components/dashboard/page-loading";
 import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = {
-  title: "Import automation | Webtomate",
+  title: "Import automation ",
 };
 
 export default function ImportAutomationPage() {
@@ -30,23 +31,24 @@ async function ImportAutomationContent() {
   ];
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-10">
+    <div className="max-w-3xl">
       <div className="space-y-6">
         <div>
           <Link
             href="/dashboard/automations"
-            className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            className="link-arrow inline-flex items-center gap-2 text-[14px] font-semibold text-[#5C6070] transition-colors hover:text-[#14151A]"
           >
-            ← Automations
+            <ArrowLeftIcon size={14} />
+            Automations
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Import automation</h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          <h1 className="display mt-4 text-[34px] leading-[1.05] tracking-[-0.035em] sm:text-[44px]">Import automation</h1>
+          <p className="mt-2.5 text-base leading-[1.55] text-[#5C6070]">
             Paste a definition JSON document. It is validated before it is saved and made runnable.
           </p>
         </div>
 
         <ImportForm examples={examples} />
       </div>
-    </main>
+    </div>
   );
 }
