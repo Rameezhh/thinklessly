@@ -4,6 +4,7 @@ import type { Locator } from "playwright";
 import type { CheckValue, FillValue, Selector, SelectValue, Step } from "@shared/definition";
 import { resolveLocator } from "./selectors";
 import { extractStructured } from "./structured";
+import { runApiExtract } from "./api";
 import { blockedFromStatus, detectBlocked, type BlockedInfo } from "./blocked";
 import type { StepContext } from "./types";
 
@@ -173,6 +174,12 @@ export async function executeStep(step: Step, ctx: StepContext): Promise<StepOut
       const { locator } = await resolve(step.selectors);
       ctx.outputs[step.root.key] = await extractStructured(locator, step.root);
       await log("info", `Extracted structured data into "${step.root.key}"`);
+      break;
+    }
+
+    case "extractApi": {
+      ctx.outputs[step.outputKey] = await runApiExtract(step, ctx);
+      await log("info", `Extracted API data into "${step.outputKey}"`);
       break;
     }
 

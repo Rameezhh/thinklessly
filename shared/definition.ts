@@ -73,6 +73,8 @@ const stepBase = {
   label: z.string().optional(),
   timeoutMs: timeoutMsSchema.optional(),
   optional: z.boolean().default(false),
+  /** Stable target identity used to merge repeated edits of the same element. */
+  identity: z.string().max(300).optional(),
 };
 
 const gotoStepSchema = z.object({
@@ -92,6 +94,8 @@ const fillStepSchema = z.object({
   type: z.literal("fill"),
   selectors: selectorsSchema,
   value: fillValueSchema,
+  /** True when this step fills a credential/secret field. Never downgraded to a literal. */
+  secret: z.boolean().optional(),
 });
 
 const selectStepSchema = z.object({
@@ -138,7 +142,7 @@ const extractStepSchema = z.object({
 });
 
 export type ExtractField =
-  | { kind: "value"; key: string; selector: string; attribute: string }
+  | { kind: "value"; key: string; selector: string; attribute: string; header?: string; column?: number }
   | { kind: "object"; key: string; selector?: string; fields: ExtractField[] }
   | { kind: "list"; key: string; selector: string; limit: number; fields: ExtractField[] };
 
@@ -149,6 +153,8 @@ export const extractFieldSchema: z.ZodType<ExtractField> = z.lazy(() =>
       key: outputKeySchema,
       selector: z.string().min(1).max(500),
       attribute: z.string().min(1).max(100).default("text"),
+      header: z.string().max(200).optional(),
+      column: z.number().int().nonnegative().optional(),
     }),
     z.object({
       kind: z.literal("object"),
@@ -172,6 +178,58 @@ const extractStructuredStepSchema = z.object({
   selectors: selectorsSchema,
   root: extractFieldSchema,
 });
+
+export const pathSegmentSchema = z.union([z.string().max(200), z.number().int()]);
+export type PathSegment = z.infer<typeof pathSegmentSchema>;
+
+export const apiFieldSchema = z.object({
+  key: outputKeySchema,
+  label: z.string().max(120).optional(),
+  path: z.array(pathSegmentSchema).max(30).default([]),
+  aliases: z.array(z.string().max(200)).max(30).default([]),
+  source: z.enum(["api", "dom"]).default("api"),
+  domSelector: z.string().max(500).optional(),
+});
+export type ApiField = z.infer<typeof apiFieldSchema>;
+
+export const apiRequestSchema = z.object({
+  method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]),
+  url: z.string().min(1).max(4000),
+  headers: z
+    .array(z.object({ name: z.string().min(1).max(80), value: z.string().max(2000) }))
+    .max(40)
+    .default([]),
+  body: z.string().max(200_000).optional(),
+  bodyType: z.enum(["json", "form", "text"]).default("json"),
+});
+export type ApiRequest = z.infer<typeof apiRequestSchema>;
+
+export const apiMatchSchema = z.object({
+  method: z.string().min(1).max(10),
+  pathname: z.string().max(2000),
+  origin: z.string().max(300).optional(),
+  query: z.record(z.string(), z.string()).default({}),
+});
+export type ApiMatch = z.infer<typeof apiMatchSchema>;
+
+const extractApiStepSchema = z.object({
+  ...stepBase,
+  type: z.literal("extractApi"),
+  outputKey: outputKeySchema,
+  request: apiRequestSchema,
+  match: apiMatchSchema,
+  path: z.array(pathSegmentSchema).max(30).default([]),
+  shape: z.enum(["list", "object", "value"]).default("list"),
+  keySource: z.enum(["response", "label"]).default("response"),
+  flatten: z.boolean().default(true),
+  dropEmpty: z.boolean().default(true),
+  joinKey: z.string().max(120).optional(),
+  fields: z.array(apiFieldSchema).max(200).default([]),
+  limit: z.number().int().positive().max(2000).default(500),
+  container: selectorsSchema.optional(),
+  fallback: extractFieldSchema.optional(),
+});
+export type ExtractApiStep = z.infer<typeof extractApiStepSchema>;
 
 const screenshotStepSchema = z.object({
   ...stepBase,
@@ -219,6 +277,7 @@ export const stepSchema = z.discriminatedUnion("type", [
   waitStepSchema,
   extractStepSchema,
   extractStructuredStepSchema,
+  extractApiStepSchema,
   screenshotStepSchema,
   assertStepSchema,
 ]);
@@ -319,6 +378,28 @@ export const automationDefinitionSchema = z
         if (step.root.kind !== "value") {
           checkExtractFieldKeys(step.root.fields, ["steps", index, "root", "fields"], ctx);
         }
+      }
+
+      if (step.type === "extractApi") {
+        if (outputKeys.has(step.outputKey)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["steps", index, "outputKey"],
+            message: `Duplicate output key "${step.outputKey}"`,
+          });
+        }
+        outputKeys.add(step.outputKey);
+        const fieldKeys = new Set<string>();
+        step.fields.forEach((field, fieldIndex) => {
+          if (fieldKeys.has(field.key)) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["steps", index, "fields", fieldIndex, "key"],
+              message: `Duplicate output field key "${field.key}"`,
+            });
+          }
+          fieldKeys.add(field.key);
+        });
       }
     });
   });

@@ -103,7 +103,7 @@ function FieldEditor({
           value={field.kind === "object" ? (field.selector ?? "") : field.selector}
           onChange={(event) => {
             const value = event.target.value;
-            if (field.kind === "value") onChange({ ...field, selector: value });
+            if (field.kind === "value") onChange({ ...field, selector: value, header: undefined, column: undefined });
             else if (field.kind === "list") onChange({ ...field, selector: value });
             else onChange({ ...field, selector: value || undefined });
           }}

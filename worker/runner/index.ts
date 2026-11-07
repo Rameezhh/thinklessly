@@ -1,7 +1,9 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import type { Browser, BrowserContext, Page } from "playwright";
 import { redactSecrets } from "@shared/redact";
+import { openBrowser, type BrowserSession } from "../browser/launch";
+import { NetworkCollector } from "../network/collector";
 import { detectBlocked } from "./blocked";
 import { dismissObstructions, stepTargetsObstruction } from "./obstruction";
 import { executeStep } from "./steps";
@@ -49,9 +51,12 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
 
   let browser: Browser | undefined;
   let context: BrowserContext | undefined;
+  let session: BrowserSession | undefined;
   let page: Page | undefined;
+  let network: NetworkCollector | undefined;
   let currentStepId: string | undefined;
   let timedOut = false;
+  let networkCursor = Date.now();
 
   const overallTimer = setTimeout(() => {
     timedOut = true;
@@ -59,15 +64,19 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
   }, settings.runTimeoutMs);
 
   try {
-    browser = await chromium.launch({ headless });
-    context = await browser.newContext({
+    session = await openBrowser({
+      headless,
+      profileKey: options.profileKey,
       viewport: settings.viewport,
       userAgent: settings.userAgent,
       locale: settings.locale,
-      timezoneId: settings.timezone,
+      timezone: settings.timezone,
     });
-    page = await context.newPage();
+    browser = session.browser;
+    context = session.context;
+    page = context.pages()[0] ?? (await context.newPage());
     page.setDefaultTimeout(settings.stepTimeoutMs);
+    network = new NetworkCollector(context);
 
     await log("info", `Browser started (${headless ? "headless" : "visible"})`);
 
@@ -85,6 +94,8 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
 
       await log("info", `Step ${step.id}: ${step.label ?? step.type}`, step.id);
 
+      if (step.type !== "extractApi") networkCursor = Date.now();
+
       const stepContext: StepContext = {
         page,
         definition,
@@ -96,6 +107,8 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
         runDir,
         timeout: step.timeoutMs ?? settings.stepTimeoutMs,
         log,
+        network,
+        networkCursor,
       };
 
       if (!stepTargetsObstruction(step)) {
@@ -176,7 +189,9 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
     return { status: "FAILED", outputs, artifacts, error: message, failedStepId: currentStepId };
   } finally {
     clearTimeout(overallTimer);
-    if (browser) {
+    if (session) {
+      await session.close();
+    } else if (browser) {
       await browser.close().catch(() => undefined);
     }
   }

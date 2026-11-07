@@ -1,5 +1,6 @@
 import type { Page } from "playwright";
 import type { AutomationDefinition, Settings } from "@shared/definition";
+import type { NetworkCollector } from "../network/collector";
 
 export type RunStatus = "SUCCESS" | "FAILED" | "NEEDS_HUMAN" | "CANCELLED";
 export type LogLevel = "info" | "warn" | "error";
@@ -34,6 +35,7 @@ export type RunOptions = {
   runDir: string;
   onLog?: LogFn;
   headless?: boolean;
+  profileKey?: string;
   shouldCancel?: () => boolean | Promise<boolean>;
 };
 
@@ -47,5 +49,7 @@ export type StepContext = {
   artifacts: RunArtifactInfo[];
   runDir: string;
   timeout: number;
+  network?: NetworkCollector;
+  networkCursor?: number;
   log: (level: LogLevel, message: string, stepId?: string) => Promise<void>;
 };

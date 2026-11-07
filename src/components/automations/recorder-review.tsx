@@ -33,6 +33,7 @@ function stepDetail(step: Step): string {
   if (step.type === "press") return step.key;
   if (step.type === "extract") return `output: ${step.outputKey}`;
   if (step.type === "extractStructured") return `JSON output: ${step.root.key}`;
+  if (step.type === "extractApi") return `${step.request.method} ${step.match.pathname} → ${step.outputKey}`;
   if (step.type === "wait") return `${step.kind}: ${String(step.value)}`;
   if (step.type === "screenshot") return step.name;
   if (step.type === "assert") return [step.kind, step.value].filter(Boolean).join(" ");
@@ -49,22 +50,22 @@ function updateStep(steps: Step[], index: number, next: Step): Step[] {
 }
 
 function SingleKeyEditor({
-  step,
+  value,
   disabled,
   onChange,
 }: {
-  step: Extract<Step, { type: "extract" }>;
+  value: string;
   disabled: boolean;
   onChange: (key: string) => void;
 }) {
-  const valid = outputKeySchema.safeParse(step.outputKey).success;
+  const valid = outputKeySchema.safeParse(value).success;
   return (
     <label className="mt-2 flex max-w-sm flex-col gap-1">
       <span className="mono text-[11px] uppercase tracking-[0.06em] text-[#5C6070]">
         Output / JSON key
       </span>
       <input
-        value={step.outputKey}
+        value={value}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
         spellCheck={false}
@@ -110,8 +111,10 @@ export function RecorderReview({ steps, fields, previews, previewTotals, editabl
       ) : (
         <ol className="mt-4 max-h-[36rem] space-y-2 overflow-auto pr-1">
           {steps.map((step, index) => {
-            const preview = step.type === "extractStructured" ? previews[step.id] : undefined;
-            const previewTotal = step.type === "extractStructured" ? previewTotals?.[step.id] : undefined;
+            const preview =
+              step.type === "extractStructured" || step.type === "extractApi" ? previews[step.id] : undefined;
+            const previewTotal =
+              step.type === "extractStructured" || step.type === "extractApi" ? previewTotals?.[step.id] : undefined;
             const itemCount =
               previewTotal ?? (Array.isArray(preview) ? preview.length : undefined);
             return (
@@ -127,7 +130,11 @@ export function RecorderReview({ steps, fields, previews, previewTotals, editabl
                         {step.label ?? step.type}
                       </span>
                       <span className="mono rounded-md bg-[#F1F0EB] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.05em] text-[#5C6070]">
-                        {step.type === "extractStructured" ? "data" : step.type}
+                        {step.type === "extractStructured"
+                          ? "data"
+                          : step.type === "extractApi"
+                            ? "api"
+                            : step.type}
                       </span>
                       {!step.enabled ? (
                         <span className="text-xs text-[#5C6070]">disabled</span>
@@ -142,10 +149,46 @@ export function RecorderReview({ steps, fields, previews, previewTotals, editabl
 
                     {step.type === "extract" ? (
                       <SingleKeyEditor
-                        step={step}
+                        value={step.outputKey}
                         disabled={!editable}
                         onChange={(key) => onChange(updateStep(steps, index, { ...step, outputKey: key }))}
                       />
+                    ) : null}
+
+                    {step.type === "extractApi" ? (
+                      <div className="mt-3 rounded-2xl border border-[#E5E4DE] bg-[#FBFBF9] px-4 py-3">
+                        <p className="mono text-[11px] text-[#5C6070]">
+                          {step.request.method} {step.match.pathname} · {step.shape} ·{" "}
+                          {step.fields.length} field(s)
+                        </p>
+                        {step.fields.length > 0 ? (
+                          <p className="mono mt-1 break-words text-[11px] text-[#5C6070]">
+                            {step.fields
+                              .slice(0, 20)
+                              .map((field) => `${field.key} ← ${field.path.join(".") || field.label || "item"}`)
+                              .join(" · ")}
+                          </p>
+                        ) : null}
+                        <SingleKeyEditor
+                          value={step.outputKey}
+                          disabled={!editable}
+                          onChange={(key) => onChange(updateStep(steps, index, { ...step, outputKey: key }))}
+                        />
+                        {preview !== undefined ? (
+                          <details className="mt-2 rounded-2xl border border-[#E5E4DE] bg-white px-4 py-3">
+                            <summary className="cursor-pointer text-xs font-medium text-[#5C6070]">
+                              Sample JSON from the API
+                              {itemCount !== undefined ? ` (${itemCount} item${itemCount === 1 ? "" : "s"})` : ""}
+                            </summary>
+                            <pre className="code-block mt-2 max-h-[28rem] overflow-auto text-[11px] text-[#D5D8E2]">
+                              {JSON.stringify(preview, null, 2)}
+                            </pre>
+                            <p className="mt-2 text-[11px] text-[#5C6070]">
+                              Each run reads this endpoint again, so new rows and renamed keys are returned as-is.
+                            </p>
+                          </details>
+                        ) : null}
+                      </div>
                     ) : null}
 
                     {step.type === "extractStructured" ? (

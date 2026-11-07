@@ -1,5 +1,13 @@
 import { z } from "zod";
-import { extractFieldSchema, selectorSchema, type Step } from "./definition";
+import {
+  extractFieldSchema,
+  selectorSchema,
+  type ExtractField,
+  type Selector,
+  type Step,
+} from "./definition";
+import { buildApiMatch, type ApiCandidate } from "./api-match";
+import type { NetworkEntry } from "./network";
 import { normalizeOutputKey, uniqueOutputKey, validateStructuredField } from "./outputs";
 
 const captureElementSchema = z.object({
@@ -32,6 +40,8 @@ type DraftStep<T> = T extends Step
   : never;
 export type NewCaptureStep = DraftStep<Step>;
 
+export type ApiCaptureStep = Extract<NewCaptureStep, { type: "extractApi" }>;
+
 export type CaptureBuildResult =
   | { ok: true; step: NewCaptureStep }
   | { ok: false; error: string };
@@ -41,8 +51,78 @@ function outputKeysInSteps(steps: Step[]): string[] {
   for (const step of steps) {
     if (step.type === "extract") keys.push(step.outputKey);
     if (step.type === "extractStructured") keys.push(step.root.key);
+    if (step.type === "extractApi") keys.push(step.outputKey);
   }
   return keys;
+}
+
+const SAFE_REQUEST_HEADERS = new Set(["accept", "content-type", "x-requested-with"]);
+const ALLOWED_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
+const AUTH_LIKE = /(login|signin|sign-in|auth|token|session|password|credential)/i;
+
+function safeRequestHeaders(entry: NetworkEntry): { name: string; value: string }[] {
+  const headers = entry.requestHeaders ?? {};
+  return Object.entries(headers)
+    .filter(([name]) => SAFE_REQUEST_HEADERS.has(name.toLowerCase()))
+    .map(([name, value]) => ({ name, value }));
+}
+
+function bodyTypeFor(entry: NetworkEntry): "json" | "form" | "text" {
+  const contentType = (entry.requestHeaders?.["content-type"] ?? "").toLowerCase();
+  if (contentType.includes("json")) return "json";
+  if (contentType.includes("form")) return "form";
+  return "text";
+}
+
+export type ApiCaptureInput = {
+  candidate: ApiCandidate;
+  entry: NetworkEntry;
+  container: { selectors: Selector[]; name?: string; tag?: string };
+  fallback?: ExtractField;
+  fallbackSelectors?: Selector[];
+};
+
+/** Builds an `extractApi` step from a matched network response. */
+export function buildApiCaptureStep(
+  input: ApiCaptureInput,
+  existingSteps: Step[],
+): ApiCaptureStep {
+  const used = outputKeysInSteps(existingSteps);
+  const { candidate, entry, container } = input;
+  const name = container.name || container.tag || "data";
+  const outputKey = uniqueOutputKey(normalizeOutputKey(name, "data"), used);
+  const rawMethod = (entry.method || "GET").toUpperCase();
+  const method = (ALLOWED_METHODS.has(rawMethod) ? rawMethod : "GET") as
+    | "GET"
+    | "POST"
+    | "PUT"
+    | "PATCH"
+    | "DELETE";
+  const authLike = AUTH_LIKE.test(entry.url);
+
+  return {
+    type: "extractApi",
+    outputKey,
+    label: `Extract ${name} (API)`,
+    request: {
+      method,
+      url: entry.url.slice(0, 4000),
+      headers: authLike ? [] : safeRequestHeaders(entry),
+      body: authLike ? undefined : entry.requestBody?.slice(0, 20_000),
+      bodyType: bodyTypeFor(entry),
+    },
+    match: buildApiMatch(entry),
+    path: candidate.path,
+    shape: candidate.shape,
+    keySource: "response",
+    flatten: true,
+    dropEmpty: true,
+    joinKey: candidate.joinKey,
+    fields: candidate.fields,
+    limit: 500,
+    container: input.fallbackSelectors?.length ? input.fallbackSelectors : container.selectors,
+    fallback: input.fallback,
+  };
 }
 
 export function buildCaptureStep(payload: unknown, existingSteps: Step[]): CaptureBuildResult {

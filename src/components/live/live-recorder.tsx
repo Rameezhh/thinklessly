@@ -75,6 +75,26 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
     };
   }, []);
 
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    function onServiceWorkerMessage(event: MessageEvent) {
+      const data = event.data as { __thinklessly?: string; entry?: unknown } | undefined;
+      if (data?.__thinklessly === "network") sessionRef.current?.addNetworkEntry(data.entry);
+    }
+    navigator.serviceWorker.addEventListener("message", onServiceWorkerMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onServiceWorkerMessage);
+  }, []);
+
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    const channel = new BroadcastChannel("thinklessly-network");
+    channel.onmessage = (event: MessageEvent) => {
+      const data = event.data as { __thinklessly?: string; entry?: unknown } | undefined;
+      if (data?.__thinklessly === "network") sessionRef.current?.addNetworkEntry(data.entry);
+    };
+    return () => channel.close();
+  }, []);
+
   function injectCurrentFrame() {
     const frame = frameRef.current;
     if (!frame) return;
@@ -160,7 +180,16 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
       frameRef.current = frame;
       frame.frame.addEventListener("load", onFrameLoad);
 
-      const session = new LiveRecorderSession(() => frameRef.current?.frame.contentDocument ?? null);
+      const session = new LiveRecorderSession(
+        () => frameRef.current?.frame.contentDocument ?? null,
+        (value: string) => {
+          try {
+            return controller.decodeUrl(value);
+          } catch {
+            return value;
+          }
+        },
+      );
       sessionRef.current = session;
       session.subscribe((next) => setSnapshot(next));
       session.onError((issue) => setError(issue.message));
@@ -226,9 +255,18 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
     startWatchdog();
   }
 
-  function endRecording() {
+  async function endRecording() {
     const session = sessionRef.current;
     if (!session) return;
+    const frameWindow = frameRef.current?.frame.contentWindow as
+      | (Window & { __thinklesslyFlush?: () => void })
+      | null;
+    try {
+      frameWindow?.__thinklesslyFlush?.();
+    } catch {
+      // The iframe may already be navigating.
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 180));
     session.stop();
     const normalized = autoPayloadFields(session.core.fields, session.core.steps);
     session.core.fields = normalized.fields;

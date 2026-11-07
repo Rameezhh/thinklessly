@@ -9,6 +9,8 @@ type PlanField = {
   attribute?: string;
   fields?: PlanField[];
   limit?: number;
+  header?: string;
+  column?: number;
 };
 
 type Plan = { root: ExtractField; maxItems: number; maxText: number };
@@ -33,12 +35,16 @@ export function extractStructuredInDom(
   }
 
   function valueOf(scopeElement: Element, field: PlanField): string | null {
-    let target: Element | null = scopeElement;
-    if (field.selector && field.selector !== ":scope") {
-      try {
-        target = scopeElement.querySelector(field.selector);
-      } catch {
-        target = null;
+    const column = columnTarget(scopeElement, field);
+    let target: Element | null = column;
+    if (!target) {
+      target = scopeElement;
+      if (field.selector && field.selector !== ":scope") {
+        try {
+          target = scopeElement.querySelector(field.selector);
+        } catch {
+          target = null;
+        }
       }
     }
     if (!target) return null;
@@ -51,6 +57,22 @@ export function extractStructuredInDom(
       return target.getAttribute("value");
     }
     return target.getAttribute(attribute);
+  }
+
+  function columnTarget(scopeElement: Element, field: PlanField): Element | null {
+    if (field.header) {
+      const table = scopeElement.closest("table");
+      if (table) {
+        const headers = Array.from(table.querySelectorAll("thead th, thead td, tr:first-child th"));
+        const wanted = field.header.replace(/\s+/g, " ").trim().toLowerCase();
+        const index = headers.findIndex(
+          (cell) => (cell.textContent ?? "").replace(/\s+/g, " ").trim().toLowerCase() === wanted,
+        );
+        if (index >= 0) return scopeElement.children.item(index);
+      }
+    }
+    if (typeof field.column === "number") return scopeElement.children.item(field.column);
+    return null;
   }
 
   function fieldsOf(scopeElement: Element, fields: PlanField[]): Record<string, unknown> {

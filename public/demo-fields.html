@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Thinklessly field demo</title>
+    <style>
+      body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 40px; color: #18181b; }
+      form { display: grid; gap: 14px; max-width: 380px; margin-top: 18px; }
+      label { display: grid; gap: 6px; font-weight: 600; }
+      input, button { padding: 9px 11px; font: inherit; }
+      .row { display: flex; gap: 8px; align-items: center; }
+      #result { margin-top: 18px; font-family: ui-monospace, monospace; color: #3f3f46; }
+    </style>
+  </head>
+  <body>
+    <h1>Account</h1>
+    <p>Use this page to test password show/hide, clearing and retyping.</p>
+
+    <form id="login" action="#" method="get">
+      <label>
+        Email
+        <input name="email" id="email" type="email" autocomplete="username" placeholder="you@example.com" />
+      </label>
+
+      <label>
+        Password
+        <input
+          name="password"
+          id="password"
+          type="password"
+          autocomplete="current-password"
+          placeholder="Your password"
+        />
+      </label>
+
+      <div class="row">
+        <button id="toggle" type="button">Show password</button>
+        <button id="clear" type="button">Clear password</button>
+      </div>
+
+      <button id="submit" type="submit">Sign in</button>
+    </form>
+
+    <p id="result"></p>
+
+    <script>
+      const form = document.getElementById("login");
+      const result = document.getElementById("result");
+      const toggle = document.getElementById("toggle");
+
+      function reveal(nextType, value) {
+        const current = document.getElementById("password");
+        const replacement = current.cloneNode(true);
+        replacement.type = nextType;
+        replacement.value = value;
+        current.replaceWith(replacement);
+        toggle.textContent = nextType === "password" ? "Show password" : "Hide password";
+        return replacement;
+      }
+
+      toggle.addEventListener("click", () => {
+        const current = document.getElementById("password");
+        const nextType = current.type === "password" ? "text" : "password";
+        const replacement = reveal(nextType, current.value);
+        replacement.focus();
+      });
+
+      document.getElementById("clear").addEventListener("click", () => {
+        const current = document.getElementById("password");
+        current.value = "";
+        current.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const password = document.getElementById("password");
+        result.textContent = `email=${document.getElementById("email").value} password length=${password.value.length}`;
+      });
+    </script>
+  </body>
+</html>

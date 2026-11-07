@@ -9,6 +9,7 @@ export const elementSchema = z.object({
   tag: z.string().max(40).default(""),
   inputType: z.string().max(40).default(""),
   fieldKey: z.string().max(60).default(""),
+  identity: z.string().max(300).default(""),
 });
 
 export const eventSchema = z.discriminatedUnion("kind", [
@@ -71,6 +72,7 @@ export class RecorderCore {
 
   private readonly maxSteps: number;
   private captureStepIds = new Map<string, string>();
+  private fieldByTarget = new Map<string, string>();
   private nextStepNumber = 1;
 
   constructor(maxSteps = 250) {
@@ -89,6 +91,7 @@ export class RecorderCore {
   pushStep(step: NewStep): PushResult | null {
     const full = this.materializeStep(step);
     const result = mergeRecordedStep(this.steps, full);
+    if (result.ignored) return null;
     const isNew = !result.updated;
 
     if (isNew && this.steps.length >= this.maxSteps) return null;
@@ -96,6 +99,13 @@ export class RecorderCore {
     this.steps = result.steps;
     const merged = this.steps.find((entry) => entry.id === result.stepId) ?? full;
     return { step: merged, updated: !isNew };
+  }
+
+  /** Pushes an already-built step (for example an API capture) and tracks it. */
+  pushCapture(step: NewStep, selectionId?: string): PushResult | null {
+    const pushed = this.pushStep(step);
+    if (pushed && selectionId) this.captureStepIds.set(selectionId, pushed.step.id);
+    return pushed;
   }
 
   handleEvent(payload: unknown): PushResult | null {
@@ -129,11 +139,25 @@ export class RecorderCore {
     return stepId;
   }
 
-  private ensureField(keyHint: string, label: string, type: Field["type"], secret: boolean): string {
+  private ensureField(
+    keyHint: string,
+    label: string,
+    type: Field["type"],
+    secret: boolean,
+    identity = "",
+  ): string {
+    if (identity) {
+      const known = this.fieldByTarget.get(identity);
+      if (known) return known;
+    }
+
     const fallback = type === "file" ? "upload_file" : "password";
     const base = fieldKeyBase(keyHint, fallback);
     const existing = this.fields.find((field) => field.key === base);
-    if (existing) return existing.key;
+    if (existing) {
+      if (identity) this.fieldByTarget.set(identity, existing.key);
+      return existing.key;
+    }
 
     let key = base;
     let suffix = 2;
@@ -149,6 +173,7 @@ export class RecorderCore {
       secret,
       required: true,
     });
+    if (identity) this.fieldByTarget.set(identity, key);
     return key;
   }
 
@@ -157,19 +182,22 @@ export class RecorderCore {
     element: RecorderElement,
     name: string,
   ): NewStep | null {
+    const identity = element.identity || undefined;
     switch (event.kind) {
       case "click": {
         const optional = isTransientElement(name, element.selectors);
-        return { type: "click", selectors: element.selectors, label: `Click ${name}`, optional };
+        return { type: "click", selectors: element.selectors, label: `Click ${name}`, optional, identity };
       }
       case "fill": {
         if (event.secret) {
-          const key = this.ensureField(element.fieldKey, name, "password", true);
+          const key = this.ensureField(element.fieldKey, name, "password", true, element.identity);
           return {
             type: "fill",
             selectors: element.selectors,
             value: { mode: "field", key },
             label: `Fill ${name} (secret)`,
+            secret: true,
+            identity,
           };
         }
         return {
@@ -177,23 +205,44 @@ export class RecorderCore {
           selectors: element.selectors,
           value: { mode: "literal", text: event.value },
           label: `Fill ${name}`,
+          secret: false,
+          identity,
         };
       }
       case "select":
-        return { type: "select", selectors: element.selectors, value: event.value, label: `Select ${name}` };
+        return {
+          type: "select",
+          selectors: element.selectors,
+          value: event.value,
+          label: `Select ${name}`,
+          identity,
+        };
       case "check":
         return {
           type: "check",
           selectors: element.selectors,
           checked: event.checked,
           label: `${event.checked ? "Check" : "Uncheck"} ${name}`,
+          identity,
         };
       case "upload": {
-        const key = this.ensureField(element.fieldKey, name, "file", false);
-        return { type: "upload", selectors: element.selectors, fieldKey: key, label: `Upload ${name}` };
+        const key = this.ensureField(element.fieldKey, name, "file", false, element.identity);
+        return {
+          type: "upload",
+          selectors: element.selectors,
+          fieldKey: key,
+          label: `Upload ${name}`,
+          identity,
+        };
       }
       case "press":
-        return { type: "press", selectors: element.selectors, key: event.key, label: `Press ${event.key}` };
+        return {
+          type: "press",
+          selectors: element.selectors,
+          key: event.key,
+          label: `Press ${event.key}`,
+          identity,
+        };
     }
   }
 }

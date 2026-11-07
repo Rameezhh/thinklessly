@@ -1,11 +1,14 @@
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import type { Browser, BrowserContext, Page } from "playwright";
 import { z } from "zod";
 import { isHttpUrl, type Field, type Step } from "@shared/definition";
 import { autoPayloadFields } from "@shared/fields";
 import { RecorderCore } from "@shared/recorder-core";
 import type { WebSocket } from "ws";
+import { openBrowser, type BrowserSession } from "../browser/launch";
+import { NetworkCollector } from "../network/collector";
 import { extractStructured } from "../runner/structured";
 import { resolveLocator } from "../runner/selectors";
+import { captureApiStep } from "./api-capture";
 import { buildInferScript } from "./infer";
 import { buildRecorderScript } from "./script";
 import { buildSectionsScript } from "./sections";
@@ -41,6 +44,8 @@ export class RecorderSession {
   private status: RecorderStatus = "starting";
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
+  private browserSession: BrowserSession | null = null;
+  private network: NetworkCollector | null = null;
   private clients = new Set<WebSocket>();
   private core = new RecorderCore(MAX_STEPS);
   private lastNavigationUrl = "";
@@ -57,9 +62,22 @@ export class RecorderSession {
   }
 
   async start(): Promise<void> {
-    this.browser = await chromium.launch({ headless: false, args: ["--start-maximized"] });
-    this.context = await this.browser.newContext({ viewport: null });
+    this.browserSession = await openBrowser({
+      headless: false,
+      profileKey: "recorder",
+      viewport: null,
+      extraArgs: ["--start-maximized"],
+    });
+    this.browser = this.browserSession.browser ?? null;
+    this.context = this.browserSession.context;
+    this.network = new NetworkCollector(this.context);
     this.context.on("page", (page) => this.attachPage(page));
+    this.context.on("close", () => {
+      if (this.status === "recording" || this.status === "starting") {
+        this.status = "stopped";
+        this.broadcast({ type: "stopped", ...this.snapshot() });
+      }
+    });
     await this.context.exposeBinding("__thinklesslyRecord", (_source, payload) => {
       this.handleEvent(payload);
     });
@@ -75,14 +93,14 @@ export class RecorderSession {
     if (this.captureData) scripts.push(buildInferScript(), buildSectionsScript(), buildToolbarScript());
     await this.context.addInitScript({ content: scripts.join("\n") });
 
-    this.browser.on("disconnected", () => {
+    this.browser?.on("disconnected", () => {
       if (this.status === "recording" || this.status === "starting") {
         this.status = "stopped";
         this.broadcast({ type: "stopped", ...this.snapshot() });
       }
     });
 
-    const page = await this.context.newPage();
+    const page = this.context.pages()[0] ?? (await this.context.newPage());
     await page.goto(this.startUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await this.ensureRecorderScripts(page);
     this.lastNavigationUrl = page.url();
@@ -125,19 +143,22 @@ export class RecorderSession {
     for (const page of this.context?.pages() ?? []) {
       await page
         .evaluate(() => {
+          const scope = window as unknown as { __thinklesslyFlush?: () => void };
+          scope.__thinklesslyFlush?.();
           if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
         })
         .catch(() => undefined);
     }
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 250));
 
     if (this.navigationTimer) clearTimeout(this.navigationTimer);
-    this.recordNavigation(this.pendingNavigationUrl || this.context?.pages()[0]?.url() || "");
+    const activePage = this.context?.pages().find((page) => isHttpUrl(page.url()));
+    this.recordNavigation(this.pendingNavigationUrl || activePage?.url() || "");
     this.pendingNavigationUrl = "";
     this.status = "stopping";
 
-    await this.context?.close().catch(() => undefined);
-    await this.browser?.close().catch(() => undefined);
+    await this.browserSession?.close();
+    this.browserSession = null;
     this.context = null;
     this.browser = null;
 
@@ -154,8 +175,8 @@ export class RecorderSession {
     if (this.status === "stopped") return;
     this.status = "stopping";
     if (this.navigationTimer) clearTimeout(this.navigationTimer);
-    await this.context?.close().catch(() => undefined);
-    await this.browser?.close().catch(() => undefined);
+    await this.browserSession?.close();
+    this.browserSession = null;
     this.context = null;
     this.browser = null;
     this.status = "stopped";
@@ -221,6 +242,9 @@ export class RecorderSession {
     const payload = envelope.success ? envelope.data.payload : input;
     const selectionId = envelope.success ? envelope.data.selectionId : undefined;
 
+    const apiStep = await this.tryApiCapture(payload, page, selectionId);
+    if (apiStep) return;
+
     const outcome = this.core.handleCapture(payload, selectionId);
     if (!outcome.ok) {
       this.broadcast({ type: "capture-error", error: outcome.error });
@@ -244,6 +268,33 @@ export class RecorderSession {
     } catch {
       this.broadcast({ type: "preview", stepId: step.id, preview: null });
     }
+  }
+
+  /** Tries to turn a DOM selection into an API-backed step. Returns true on success. */
+  private async tryApiCapture(payload: unknown, page: Page, selectionId?: string): Promise<boolean> {
+    if (!this.network || !this.captureData) return false;
+    const result = await captureApiStep({
+      core: this.core,
+      network: this.network,
+      payload,
+      page,
+      selectionId,
+    });
+    if (!result) return false;
+
+    this.lastInteractionAt = Date.now();
+    this.broadcast(
+      result.pushed.updated
+        ? { type: "step-updated", step: result.pushed.step, api: result.api }
+        : { type: "step", step: result.pushed.step, api: result.api },
+    );
+
+    const preview = result.preview;
+    const total = Array.isArray(preview) ? preview.length : undefined;
+    this.previews[result.pushed.step.id] = preview;
+    if (typeof total === "number") this.previewTotals[result.pushed.step.id] = total;
+    this.broadcast({ type: "preview", stepId: result.pushed.step.id, preview, total });
+    return true;
   }
 
   private handleEvent(payload: unknown): void {

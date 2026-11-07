@@ -9,6 +9,7 @@ export function recorderInitScript() {
     __thinklesslyTextOf?: (el: Element) => string;
     __thinklesslyRelativeSelector?: (scope: Element, el: Element) => string | null;
     __thinklesslyEscape?: (value: string) => string;
+    __thinklesslyFlush?: () => void;
   };
 
   const w = window as RecorderWindow;
@@ -70,6 +71,96 @@ export function recorderInitScript() {
       .replace(/^_+|_+$/g, "")
       .slice(0, 40);
     return /^[a-z]/.test(key) ? key : "";
+  }
+
+  const strongToLogical = new Map<string, string>();
+  const passwordWeak = new Map<string, string>();
+  const logicalPassword = new Set<string>();
+  let logicalCounter = 0;
+
+  function formKeyOf(el: Element): string {
+    const form = (el as HTMLInputElement).form;
+    if (!form) return "";
+    return form.id || form.getAttribute("name") || form.getAttribute("action") || "";
+  }
+
+  function fieldPosition(el: Element): string {
+    const form = (el as HTMLInputElement).form;
+    if (!form) return "";
+    const fields = Array.from(form.elements) as Element[];
+    const index = fields.indexOf(el);
+    return index >= 0 ? String(index) : "";
+  }
+
+  /** Identity ignores `type` and `id` so a "show password" swap keeps the same target. */
+  function strongKeyOf(el: Element): string {
+    const input = el as HTMLInputElement;
+    const name = el.getAttribute("name") || input.name || "";
+    const main =
+      name ||
+      el.getAttribute("autocomplete") ||
+      labelOf(el) ||
+      placeholderOf(el) ||
+      el.getAttribute("aria-label") ||
+      `pos:${fieldPosition(el)}`;
+    return `${el.tagName.toLowerCase()}|${formKeyOf(el)}|${main}`;
+  }
+
+  /** Weaker key used only to reconnect password fields whose name changes on reveal. */
+  function passwordWeakKeyOf(el: Element): string {
+    const main =
+      el.getAttribute("autocomplete") ||
+      labelOf(el) ||
+      placeholderOf(el) ||
+      el.getAttribute("aria-label") ||
+      "";
+    return main ? `${formKeyOf(el)}|${main}` : "";
+  }
+
+  function logicalIdentityOf(el: Element): string {
+    const strong = strongKeyOf(el);
+    let id = strongToLogical.get(strong);
+    if (!id) {
+      const weak = passwordWeakKeyOf(el);
+      if (weak) id = passwordWeak.get(weak);
+    }
+    if (!id) {
+      logicalCounter += 1;
+      id = `t${logicalCounter}:${strong}`;
+    }
+    strongToLogical.set(strong, id);
+
+    const tag = el.tagName.toLowerCase();
+    const type = tag === "input" ? ((el as HTMLInputElement).type || "").toLowerCase() : "";
+    if (type === "password") {
+      logicalPassword.add(id);
+      const weak = passwordWeakKeyOf(el);
+      if (weak) passwordWeak.set(weak, id);
+    }
+    return id.slice(0, 300);
+  }
+
+  function isSecretField(el: Element, identity: string): boolean {
+    const tag = el.tagName.toLowerCase();
+    if (tag !== "input") return false;
+    const type = ((el as HTMLInputElement).type || "text").toLowerCase();
+    return type === "password" || logicalPassword.has(identity);
+  }
+
+  function markPasswordFields(root: ParentNode = document): void {
+    for (const input of Array.from(root.querySelectorAll('input[type="password"]'))) {
+      logicalIdentityOf(input);
+    }
+  }
+
+  let passwordScanTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function schedulePasswordScan(): void {
+    if (passwordScanTimer) return;
+    passwordScanTimer = setTimeout(() => {
+      passwordScanTimer = undefined;
+      markPasswordFields();
+    }, 100);
   }
 
   function roleOf(el: Element): string | null {
@@ -231,13 +322,88 @@ export function recorderInitScript() {
   }
 
   function elementInfo(el: Element) {
+    const identity = logicalIdentityOf(el);
     return {
       selectors: selectorsFor(el),
       name: nameOf(el),
       tag: el.tagName.toLowerCase(),
       inputType: el.tagName.toLowerCase() === "input" ? ((el as HTMLInputElement).type || "text").toLowerCase() : "",
       fieldKey: fieldKeyOf(el),
+      identity,
     };
+  }
+
+  const pendingTimers = new Map<Element, ReturnType<typeof setTimeout>>();
+  const dirtyFields = new Set<Element>();
+
+  function fillPayload(el: Element): Record<string, unknown> | null {
+    const tag = el.tagName.toLowerCase();
+    const identity = logicalIdentityOf(el);
+    if (tag === "textarea") {
+      return {
+        kind: "fill",
+        element: elementInfo(el),
+        value: (el as HTMLTextAreaElement).value,
+        secret: false,
+      };
+    }
+    if (tag !== "input") return null;
+    const input = el as HTMLInputElement;
+    const type = (input.type || "text").toLowerCase();
+    if (type === "checkbox" || type === "radio" || type === "file") return null;
+    if (type === "submit" || type === "button" || type === "reset") return null;
+    const secret = isSecretField(el, identity);
+    return {
+      kind: "fill",
+      element: elementInfo(el),
+      value: secret ? "" : input.value,
+      secret,
+    };
+  }
+
+  function sendFill(el: Element): void {
+    const payload = fillPayload(el);
+    if (payload) send(payload);
+  }
+
+  function clearPending(el: Element): boolean {
+    const timer = pendingTimers.get(el);
+    if (timer === undefined) return false;
+    clearTimeout(timer);
+    pendingTimers.delete(el);
+    return true;
+  }
+
+  function scheduleFill(el: Element): void {
+    dirtyFields.add(el);
+    clearPending(el);
+    const timer = setTimeout(() => {
+      pendingTimers.delete(el);
+      dirtyFields.delete(el);
+      sendFill(el);
+    }, 400);
+    pendingTimers.set(el, timer);
+  }
+
+  function flushElement(el: Element, force = false): void {
+    const hadPending = clearPending(el);
+    const wasDirty = dirtyFields.delete(el);
+    if (!hadPending && !wasDirty && !force) return;
+    sendFill(el);
+  }
+
+  function flushAll(): void {
+    for (const el of Array.from(pendingTimers.keys())) {
+      if (el.isConnected) flushElement(el);
+      else {
+        clearPending(el);
+        dirtyFields.delete(el);
+      }
+    }
+    for (const el of Array.from(dirtyFields)) {
+      if (el.isConnected) flushElement(el);
+      else dirtyFields.delete(el);
+    }
   }
 
   function handleClick(event: MouseEvent) {
@@ -251,6 +417,20 @@ export function recorderInitScript() {
     if (tag === "select" || tag === "textarea") return;
 
     send({ kind: "click", element: elementInfo(el) });
+  }
+
+  function handleInput(event: Event) {
+    if (w.__thinklesslyPickMode || isUiEvent(event)) return;
+    const el = resolveTarget(event.target);
+    if (!el) return;
+    const tag = el.tagName.toLowerCase();
+    if (tag !== "input" && tag !== "textarea") return;
+    if (tag === "input") {
+      const type = ((el as HTMLInputElement).type || "text").toLowerCase();
+      if (type === "checkbox" || type === "radio" || type === "file") return;
+      if (type === "submit" || type === "button" || type === "reset") return;
+    }
+    scheduleFill(el);
   }
 
   function handleChange(event: Event) {
@@ -276,19 +456,17 @@ export function recorderInitScript() {
         return;
       }
       if (type === "submit" || type === "button" || type === "reset") return;
-      const secret = type === "password";
-      send({
-        kind: "fill",
-        element: elementInfo(el),
-        value: secret ? "" : input.value,
-        secret,
-      });
+      flushElement(el, true);
       return;
     }
 
-    if (tag === "textarea") {
-      send({ kind: "fill", element: elementInfo(el), value: (el as HTMLTextAreaElement).value, secret: false });
-    }
+    if (tag === "textarea") flushElement(el, true);
+  }
+
+  function handleFocusOut(event: FocusEvent) {
+    if (w.__thinklesslyPickMode || isUiEvent(event)) return;
+    const el = resolveTarget(event.target);
+    if (el) flushElement(el);
   }
 
   function handleKeyDown(event: KeyboardEvent) {
@@ -306,11 +484,24 @@ export function recorderInitScript() {
   w.__thinklesslyTextOf = textOf;
   w.__thinklesslyRelativeSelector = relativeSelector;
   w.__thinklesslyEscape = escapeValue;
+  w.__thinklesslyFlush = flushAll;
 
   function attach() {
+    markPasswordFields();
     document.addEventListener("click", handleClick, true);
+    document.addEventListener("input", handleInput, true);
     document.addEventListener("change", handleChange, true);
+    document.addEventListener("focusout", handleFocusOut, true);
+    document.addEventListener("focusin", schedulePasswordScan, true);
     document.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("pagehide", flushAll);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") flushAll();
+    });
+    if (typeof MutationObserver !== "undefined" && document.documentElement) {
+      const observer = new MutationObserver(schedulePasswordScan);
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+    }
   }
 
   if (document.readyState === "loading") {

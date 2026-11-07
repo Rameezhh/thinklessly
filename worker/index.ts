@@ -40,6 +40,7 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 let stopScheduler: (() => void) | undefined;
 let recorder: RecorderServerHandle | undefined;
 const inFlight = new Set<Promise<void>>();
+const activeAutomations = new Set<string>();
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -47,9 +48,15 @@ function errorMessage(error: unknown): string {
 
 async function claimNextRun() {
   const candidate = await prisma.run.findFirst({
-    where: { status: "QUEUED", scheduledAt: { lte: new Date() } },
+    where: {
+      status: "QUEUED",
+      scheduledAt: { lte: new Date() },
+      ...(activeAutomations.size > 0
+        ? { automationId: { notIn: [...activeAutomations] } }
+        : {}),
+    },
     orderBy: { scheduledAt: "asc" },
-    select: { id: true },
+    select: { id: true, automationId: true },
   });
   if (!candidate) return null;
 
@@ -59,10 +66,18 @@ async function claimNextRun() {
   });
   if (claimed.count === 0) return null;
 
-  return prisma.run.findUnique({
-    where: { id: candidate.id },
-    include: { version: true },
-  });
+  activeAutomations.add(candidate.automationId);
+  try {
+    const run = await prisma.run.findUnique({
+      where: { id: candidate.id },
+      include: { version: true },
+    });
+    if (!run) activeAutomations.delete(candidate.automationId);
+    return run;
+  } catch (error) {
+    activeAutomations.delete(candidate.automationId);
+    throw error;
+  }
 }
 
 type ClaimedRun = NonNullable<Awaited<ReturnType<typeof claimNextRun>>>;
@@ -110,6 +125,7 @@ async function processRun(run: ClaimedRun): Promise<void> {
       secrets,
       runDir,
       headless: config.headless,
+      profileKey: run.automationId,
       shouldCancel: async () => {
         const current = await prisma.run.findUnique({ where: { id: run.id }, select: { status: true } });
         return current?.status === "CANCELLED";
@@ -175,6 +191,7 @@ async function poll(): Promise<void> {
           console.error(`[worker] run ${run.id} crashed: ${errorMessage(error)}`);
         })
         .finally(() => {
+          activeAutomations.delete(run.automationId);
           inFlight.delete(task);
         });
       inFlight.add(task);

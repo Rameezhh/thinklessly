@@ -89,8 +89,8 @@ async function AutomationContent({ params }: { params: Promise<{ id: string }> }
 
   const extractionSteps = definition
     ? definition.steps.filter(
-        (step): step is Extract<Step, { type: "extract" | "extractStructured" }> =>
-          step.type === "extract" || step.type === "extractStructured",
+        (step): step is Extract<Step, { type: "extract" | "extractStructured" | "extractApi" }> =>
+          step.type === "extract" || step.type === "extractStructured" || step.type === "extractApi",
       )
     : [];
 

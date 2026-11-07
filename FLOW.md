@@ -114,12 +114,117 @@ separate Playwright runner (`worker/runner/*`) that reads the same step/selector
 schema; selectors resolve through Playwright's
 `getByTestId / getByRole / getByLabel / getByPlaceholder / getByText / locator`.
 
+## 9. Stable input capture
+
+- The injected recorder now computes a semantic `identity` for each control
+  (`form + name/autocomplete/label/placeholder`, ignoring `id` and `type`).
+  Steps persist it as `identity` in the definition.
+- `mergeRecordedStep` merges by `identity` first (falling back to selectors).
+  A credential step (`secret: true`) is never downgraded to a literal, so a
+  "show password" toggle cannot record a second field or expose the value.
+- Text inputs send debounced `input` events (400 ms) and flush on `change`,
+  `focusout`, `pagehide`, and visibility change. The last committed value wins.
+  `__thinklesslyFlush()` is called when a recording stops.
+- Password/file inputs create/reuse one `Field` per identity, not per selector.
+
+## 10. API tracking and extraction
+
+### Capture
+
+- Browser live mode: `public/live/sw.js` listens to Scramjet's `request` and
+  `handleResponse` events, tees JSON response bodies (≤ 2 MB), redacts auth
+  headers, and broadcasts entries over a `BroadcastChannel`
+  (`thinklessly-network`) plus `client.postMessage`. `LiveRecorderSession`
+  stores them and decodes proxied URLs when needed.
+- Playwright recorder and runner: `worker/network/collector.ts` records
+  responses (method, URL, status, safe headers, request body, parsed JSON body)
+  for up to 300 entries. The recorder attaches it before the first `goto`.
+- Nothing from the network log is persisted in the database; only the chosen
+  endpoint metadata is stored in the step.
+
+### Matching a selection to an API
+
+- The toolbar sends the DOM selection. The session builds a DOM snapshot
+  (`shared/dom-snapshot.ts`: headers, first rows, leaf text, nearby headings).
+- `shared/api-match.ts` scores every captured JSON response by value overlap,
+  key overlap, row fit, and recency, and returns ranked candidates. The best
+  candidate above `0.5` becomes an `extractApi` step; otherwise the existing
+  DOM `extractStructured` step is used.
+- Each column is mapped to an API key. Columns the API does not contain are
+  marked `source: "dom"` and read from the corresponding DOM row at run time.
+  API rows and DOM rows are aligned with a detected `joinKey` or by index.
+
+### The `extractApi` step
+
+- Stores the endpoint (`request`), stable match (`method`, `pathname`, stable
+  query params), JSON path, shape, field map, limit, DOM container/fallback.
+- At run time (`worker/runner/api.ts`) it tries, in order:
+  1. **passive** — read the page's own matching response (keeps cookies, CSRF
+     tokens and signatures correct),
+  2. **replay** — `fetch` from the page context with `credentials: "include"`,
+  3. **DOM fallback** — the recorded `extractStructured` tree.
+- `shared/api-extract.ts` shapes the JSON: current rows, current response keys
+  when they are renamed, nested objects flattened to `parent_child`, empty
+  values/keys dropped, duplicate keys suffixed. Output is the list/object
+  directly (no envelope layering).
+
+## 11. Run hardening
+
+- `worker/browser/launch.ts` opens Chromium with `--disable-blink-features=
+  AutomationControlled`, a small stealth init script, and a persistent profile
+  (`BROWSER_PROFILE_DIR`, default `data/profiles`). Runs use
+  `data/profiles/<automationId>`; the recorder uses `data/profiles/recorder`.
+  This keeps cookies/logins between runs (important for Amazon/marketplaces).
+- Set `BROWSER_PROFILE_DIR=""` to disable persistent profiles.
+
+## 12. Manual verification
+
+Start the Chromium recorder (the in-browser proxy blocks localhost):
+
+```bash
+LIVE_RECORDER=false pnpm dev
+```
+
+Then create an automation and use these pages:
+
+- **Field stability** — `http://localhost:3000/demo-fields.html`
+  - Type an email, type a password, click **Show password**, edit the visible
+    value, click **Clear password**, retype. Stop the recording and check that
+    there is exactly **one** password field and one fill step (`secret: true`)
+    with the last value semantics.
+  - Run the saved automation and confirm it fills the password.
+- **Dynamic rows** — `http://localhost:3000/demo-table.html`
+  - Click **Load 10 rows**, then select the product table in the toolbar.
+  - Save and run. The output must contain **10** rows even if you recorded when
+    only 3 were visible.
+- **Renamed keys** — click **Load renamed columns**, then select the table.
+  - Save and run. The output keys must be `product_title`, `price_value`,
+    `category_name` (current API keys), with no empty values and no nested
+    `data.products` envelope.
+- **API metadata** — the review panel shows the matched method + path, the
+  field map, and a sanitized sample. The run logs show whether the response was
+  observed or replayed.
+
+Run the automated checks:
+
+```bash
+pnpm typecheck
+pnpm lint
+pnpm test
+```
+
 ## Files involved
 
 - `src/app/dashboard/automations/create/page.tsx`
 - `src/components/automations/recorder-panel.tsx`, `recorder-review.tsx`
-- `src/lib/automation-actions.ts`
+- `src/lib/automation-actions.ts`, `src/lib/output-actions.ts`
+- `src/lib/live/{session,dom-extract,inject,scramjet}.ts`
+- `src/components/live/live-recorder.tsx`
+- `public/live/sw.js`, `public/demo-table.html`, `public/demo-fields.html`
+- `src/app/api/demo/products/route.ts`
 - `worker/index.ts`
-- `worker/recorder/{server,session,script,infer,sections,toolbar,capture,merge}.ts`
-- `worker/runner/{selectors,structured}.ts`
-- `shared/{definition,fields,outputs}.ts`
+- `worker/browser/launch.ts`, `worker/network/collector.ts`
+- `worker/recorder/{server,session,script,infer,sections,toolbar,api-capture}.ts`
+- `worker/runner/{index,steps,selectors,structured,api}.ts`
+- `shared/{definition,fields,outputs,recorder-core,recorder-capture,recorder-merge}.ts`
+- `shared/{network,api-values,api-fields,api-match,api-extract,dom-snapshot}.ts`

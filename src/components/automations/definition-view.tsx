@@ -42,6 +42,8 @@ function stepDetail(step: Step): string | null {
       return `output: ${step.outputKey}`;
     case "extractStructured":
       return `JSON output: ${step.root.key}`;
+    case "extractApi":
+      return `${step.request.method} ${step.match.pathname} → ${step.outputKey}`;
     case "screenshot":
       return step.name;
     case "assert":
@@ -220,7 +222,8 @@ export function DefinitionView({
           {orderedSteps.map((step, index) => {
             const selectors = selectorsFor(step);
             const detail = stepDetail(step);
-            const extraction = step.type === "extract" || step.type === "extractStructured";
+            const extraction =
+              step.type === "extract" || step.type === "extractStructured" || step.type === "extractApi";
             return (
               <li
                 key={step.id}
@@ -295,6 +298,18 @@ export function DefinitionView({
                     <pre className="code-block mt-3.5 max-h-96 overflow-auto text-[12px]">
                       {fieldLines(step.root).join("\n")}
                     </pre>
+                  ) : null}
+                  {step.type === "extractApi" ? (
+                    <div className="mt-3 rounded-xl border border-[#E5E4DE] bg-[#FBFBF9] p-3 text-[12px] text-[#5C6070]">
+                      <p className="mono">
+                        {step.request.method} {step.match.pathname} · {step.shape} · {step.fields.length} field(s)
+                      </p>
+                      {step.fields.length > 0 ? (
+                        <p className="mono mt-1 truncate">
+                          {step.fields.map((field) => field.key).join(", ")}
+                        </p>
+                      ) : null}
+                    </div>
                   ) : null}
                   {step.type === "fill" && step.value.mode === "literal" ? (
                     <div className="mt-3 flex flex-wrap gap-2">

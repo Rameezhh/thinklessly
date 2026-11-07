@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Thinklessly API demo</title>
+    <style>
+      body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 40px; color: #18181b; }
+      table { border-collapse: collapse; margin-top: 16px; min-width: 520px; }
+      th, td { border: 1px solid #d4d4d8; padding: 8px 12px; text-align: left; }
+      th { background: #f4f4f5; }
+      button { margin-top: 16px; padding: 8px 14px; cursor: pointer; }
+      #status { margin-left: 12px; color: #52525b; }
+    </style>
+  </head>
+  <body>
+    <h1>Products</h1>
+    <p>This table is rendered from <code>GET /api/demo/products?count=N</code>.</p>
+
+    <table data-testid="product-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Price</th>
+          <th>Category</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+
+    <div>
+      <button id="load-three" type="button">Load 3 rows</button>
+      <button id="load-ten" type="button">Load 10 rows</button>
+      <button id="load-renamed" type="button">Load renamed columns</button>
+      <span id="status"></span>
+    </div>
+
+    <script>
+      const rows = document.getElementById("rows");
+      const status = document.getElementById("status");
+
+      async function load(count, variant) {
+        status.textContent = "Loading...";
+        const query = new URLSearchParams({ count: String(count) });
+        if (variant) query.set("variant", variant);
+        const response = await fetch(`/api/demo/products?${query}`, { cache: "no-store" });
+        const json = await response.json();
+        const products = json.data.products;
+        rows.replaceChildren();
+        for (const product of products) {
+          const tr = document.createElement("tr");
+          const values = variant === "renamed"
+            ? [product.product_title, product.price_value, product.category_name]
+            : [product.title, product.price, product.category];
+          for (const value of values) {
+            const td = document.createElement("td");
+            td.textContent = String(value ?? "");
+            tr.append(td);
+          }
+          rows.append(tr);
+        }
+        status.textContent = `${products.length} rows loaded`;
+      }
+
+      document.getElementById("load-three").addEventListener("click", () => load(3));
+      document.getElementById("load-ten").addEventListener("click", () => load(10));
+      document
+        .getElementById("load-renamed")
+        .addEventListener("click", () => load(5, "renamed"));
+
+      load(3);
+    </script>
+  </body>
+</html>

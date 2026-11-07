@@ -1,6 +1,6 @@
 export function inferInitScript() {
   type Field =
-    | { kind: "value"; key: string; selector: string; attribute: string }
+    | { kind: "value"; key: string; selector: string; attribute: string; header?: string; column?: number }
     | { kind: "object"; key: string; selector?: string; fields: Field[] }
     | { kind: "list"; key: string; selector: string; limit: number; fields: Field[] };
 
@@ -153,7 +153,16 @@ export function inferInitScript() {
 
   function tableRows(table: HTMLTableElement) {
     const tbodyRows = Array.from(table.querySelectorAll("tbody tr")) as HTMLTableRowElement[];
-    if (tbodyRows.length > 0) return { rows: tbodyRows, selector: "tbody tr" };
+    if (tbodyRows.length > 0) {
+      const first = tbodyRows[0];
+      const firstIsHeader = Boolean(
+        first && first.querySelectorAll("th").length > 0 && first.querySelectorAll("td").length === 0,
+      );
+      return {
+        rows: firstIsHeader ? tbodyRows.slice(1) : tbodyRows,
+        selector: firstIsHeader ? "tbody tr:not(:first-child)" : "tbody tr",
+      };
+    }
     const rows = Array.from(table.querySelectorAll("tr")) as HTMLTableRowElement[];
     const first = rows[0];
     const firstIsHeader = Boolean(first && first.querySelectorAll("th").length > 0 && first.querySelectorAll("td").length === 0);
@@ -162,8 +171,13 @@ export function inferInitScript() {
 
   function tablePlan(table: HTMLTableElement): { scope: Element; root: Field } | null {
     const { rows, selector } = tableRows(table);
-    const headerRow = table.tHead?.rows[0] ?? null;
-    const headerCells = headerRow ? Array.from(headerRow.cells) : [];
+    const candidateHeader = table.tHead?.rows[0] ?? table.rows[0] ?? null;
+    const candidateCells = candidateHeader ? Array.from(candidateHeader.cells) : [];
+    const candidateIsHeader =
+      Boolean(candidateHeader) &&
+      candidateHeader!.querySelectorAll("th").length > 0 &&
+      candidateHeader!.querySelectorAll("td").length === 0;
+    const headerCells = candidateIsHeader ? candidateCells : [];
     const firstRow = rows[0];
     const count = Math.max(headerCells.length, firstRow?.cells.length ?? 0);
     if (count === 0) return null;
@@ -177,6 +191,8 @@ export function inferInitScript() {
         key: uniqueKey(header || `column_${index + 1}`, used),
         selector: `:scope > td:nth-child(${index + 1}), :scope > th:nth-child(${index + 1})`,
         attribute: "text",
+        header: header.trim() || undefined,
+        column: index,
       });
     }
 

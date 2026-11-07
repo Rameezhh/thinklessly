@@ -6,26 +6,27 @@ import { validateStructuredField } from "@shared/outputs";
 import { renameOutputsAction, type OutputPanelState } from "@/lib/output-actions";
 import { ExtractionTreeEditor } from "./extraction-tree-editor";
 
-type ExtractStep = Extract<Step, { type: "extract" | "extractStructured" }>;
+type ExtractStep = Extract<Step, { type: "extract" | "extractStructured" | "extractApi" }>;
 type Edit =
   | { id: string; type: "extract"; outputKey: string }
-  | { id: string; type: "extractStructured"; root: ExtractField };
+  | { id: string; type: "extractStructured"; root: ExtractField }
+  | { id: string; type: "extractApi"; outputKey: string };
 
 const inputClass = "field field-sm";
 
 function initialEdits(steps: ExtractStep[]): Edit[] {
-  return steps.map((step) =>
-    step.type === "extract"
-      ? { id: step.id, type: "extract", outputKey: step.outputKey }
-      : { id: step.id, type: "extractStructured", root: step.root },
-  );
+  return steps.map((step) => {
+    if (step.type === "extract") return { id: step.id, type: "extract", outputKey: step.outputKey };
+    if (step.type === "extractApi") return { id: step.id, type: "extractApi", outputKey: step.outputKey };
+    return { id: step.id, type: "extractStructured", root: step.root };
+  });
 }
 
 function editIssues(edits: Edit[]): string[] {
   const issues: string[] = [];
   const keys = new Set<string>();
   for (const edit of edits) {
-    const key = edit.type === "extract" ? edit.outputKey : edit.root.key;
+    const key = edit.type === "extractStructured" ? edit.root.key : edit.outputKey;
     if (!outputKeySchema.safeParse(key).success) issues.push(`Invalid key "${key}"`);
     if (keys.has(key)) issues.push(`Duplicate key "${key}"`);
     keys.add(key);
@@ -79,20 +80,20 @@ export function OutputsPanel({
         <input type="hidden" name="payload" value={payload} readOnly />
 
         {edits.map((edit) => {
-          if (edit.type === "extract") {
+          if (edit.type === "extract" || edit.type === "extractApi") {
             const valid = outputKeySchema.safeParse(edit.outputKey).success;
             return (
               <div key={edit.id} className="rounded-2xl border border-[#E5E4DE] bg-white p-4">
                 <label className="flex max-w-sm flex-col gap-1">
                   <span className="mono text-[11px] uppercase tracking-[0.06em] text-[#5C6070]">
-                    Output / JSON key
+                    {edit.type === "extractApi" ? "API output / JSON key" : "Output / JSON key"}
                   </span>
                   <input
                     value={edit.outputKey}
                     onChange={(event) =>
                       setEdits((current) =>
                         current.map((item) =>
-                          item.id === edit.id && item.type === "extract"
+                          item.id === edit.id && item.type === edit.type
                             ? { ...item, outputKey: event.target.value }
                             : item,
                         ),

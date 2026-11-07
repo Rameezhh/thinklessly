@@ -24,6 +24,11 @@ const editSchema = z.discriminatedUnion("type", [
     type: z.literal("extractStructured"),
     root: extractFieldSchema,
   }),
+  z.object({
+    id: z.string().min(1),
+    type: z.literal("extractApi"),
+    outputKey: outputKeySchema,
+  }),
 ]);
 
 const payloadSchema = z.object({
@@ -82,6 +87,9 @@ export async function renameOutputsAction(
     }
     if (step.type === "extractStructured" && edit.type === "extractStructured") {
       return { ...step, root: edit.root };
+    }
+    if (step.type === "extractApi" && edit.type === "extractApi") {
+      return { ...step, outputKey: edit.outputKey };
     }
     return step;
   });

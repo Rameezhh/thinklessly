@@ -31,6 +31,7 @@ export function outputKeysIn(definition: AutomationDefinition): string[] {
   for (const step of definition.steps) {
     if (step.type === "extract") keys.push(step.outputKey);
     if (step.type === "extractStructured") keys.push(step.root.key);
+    if (step.type === "extractApi") keys.push(step.outputKey);
   }
   return keys;
 }
@@ -106,6 +107,16 @@ export function outputIssuesForSteps(steps: Step[]): OutputKeyIssue[] {
           path: `steps[${index}].${issue.path}`,
         })),
       );
+    }
+
+    if (step.type === "extractApi") {
+      if (!outputKeySchema.safeParse(step.outputKey).success) {
+        issues.push({ path: `steps[${index}].outputKey`, message: `Invalid key "${step.outputKey}"` });
+      }
+      if (outputKeys.has(step.outputKey)) {
+        issues.push({ path: `steps[${index}].outputKey`, message: `Duplicate output key "${step.outputKey}"` });
+      }
+      outputKeys.add(step.outputKey);
     }
   });
 
