@@ -1,5 +1,16 @@
 importScripts("/live/vendor/scram/scramjet.all.js");
 
+// Take over immediately on updates and claim the live iframe as soon as the
+// worker activates. Without this a new sw.js can sit in "waiting" forever and
+// the browser keeps using an older proxy build.
+self.addEventListener("install", () => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();
 

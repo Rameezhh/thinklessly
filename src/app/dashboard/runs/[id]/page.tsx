@@ -22,6 +22,16 @@ const levelClasses: Record<string, string> = {
   error: "text-[#B42318]",
 };
 
+type OutputMetaView = {
+  source?: string;
+  endpoint?: string;
+  method?: string;
+  entity?: string;
+  count?: number;
+  columns?: string[];
+  normalized?: boolean;
+};
+
 export default function RunPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <Suspense fallback={<PageLoading />}>
@@ -38,6 +48,8 @@ async function RunContent({ params }: { params: Promise<{ id: string }> }) {
 
   const active = isActiveStatus(run.status);
   const outputs = fromJson<Record<string, unknown>>(run.outputs ?? "{}", {});
+  const meta = fromJson<Record<string, OutputMetaView>>(run.meta ?? "{}", {});
+  const metaEntries = Object.entries(meta);
   const screenshots = run.artifacts.filter((artifact) => artifact.kind === "SCREENSHOT");
   const otherArtifacts = run.artifacts.filter((artifact) => artifact.kind !== "SCREENSHOT");
 
@@ -116,6 +128,38 @@ async function RunContent({ params }: { params: Promise<{ id: string }> }) {
           </ul>
         )}
       </section>
+
+      {metaEntries.length > 0 ? (
+        <section className="card mt-6">
+          <div className="card-head">
+            <h2 className="card-title">Output schema</h2>
+            <p className="card-desc">
+              The canonical shape was fixed when the first response was captured. Every run reuses it.
+            </p>
+          </div>
+          <ul className="divide-y divide-[#EFEEE8] text-sm">
+            {metaEntries.map(([key, info]) => (
+              <li key={key} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-7 py-3">
+                <span className="mono text-[12px] font-semibold text-[#14151A]">{key}</span>
+                <span className="text-[12px] text-[#5C6070]">
+                  {info.source ?? "unknown"}
+                  {info.method ? ` ${info.method}` : ""}
+                  {info.entity ? ` · ${info.entity}` : ""}
+                  {info.count !== undefined ? ` · ${info.count} item${info.count === 1 ? "" : "s"}` : ""}
+                </span>
+                {info.endpoint ? (
+                  <span className="mono min-w-0 break-all text-[11px] text-[#8A8E9E]">{info.endpoint}</span>
+                ) : null}
+                {info.columns && info.columns.length > 0 ? (
+                  <span className="mono w-full text-[11px] text-[#5C6070]">
+                    {info.columns.join(", ")}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="card mt-6">
         <div className="card-head">

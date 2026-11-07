@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizePlanSchema } from "./normalize/types";
 
 export const fieldKeySchema = z
   .string()
@@ -67,12 +68,21 @@ export function valueFieldKey(value: FillValue | SelectValue | CheckValue): stri
     : null;
 }
 
+export const criticalitySchema = z.enum(["required", "preferred", "optional"]);
+export type Criticality = z.infer<typeof criticalitySchema>;
+
 const stepBase = {
   id: z.string().min(1, "Step id is required"),
   enabled: z.boolean().default(true),
   label: z.string().optional(),
   timeoutMs: timeoutMsSchema.optional(),
   optional: z.boolean().default(false),
+  /**
+   * How hard the runner must try to complete this step. Inputs, selections,
+   * URLs and extractions default to "required"; clicks default to "preferred"
+   * so a renamed or missing button never aborts an otherwise healthy run.
+   */
+  criticality: criticalitySchema.optional(),
   /** Stable target identity used to merge repeated edits of the same element. */
   identity: z.string().max(300).optional(),
 };
@@ -228,6 +238,11 @@ const extractApiStepSchema = z.object({
   limit: z.number().int().positive().max(2000).default(500),
   container: selectorsSchema.optional(),
   fallback: extractFieldSchema.optional(),
+  /**
+   * Canonical output shape resolved when the first response was captured.
+   * Every run reuses it so key names, ordering and types stay stable.
+   */
+  outputSchema: normalizePlanSchema.optional(),
 });
 export type ExtractApiStep = z.infer<typeof extractApiStepSchema>;
 
@@ -284,6 +299,30 @@ export const stepSchema = z.discriminatedUnion("type", [
 export type Step = z.infer<typeof stepSchema>;
 export type StepType = Step["type"];
 
+/**
+ * Effective criticality for a step. New recordings always set `criticality`,
+ * but older definitions and clicks recorded before this field existed still
+ * degrade safely: clicks and presses become skippable instead of failing.
+ */
+export function stepCriticality(step: Step): Criticality {
+  if (step.criticality) return step.criticality;
+  if (step.optional) return "optional";
+  if (step.type === "screenshot" || step.type === "wait") return "optional";
+  if (step.type === "click" || step.type === "press") return "preferred";
+  return "required";
+}
+
+export function isSkippableStep(step: Step): boolean {
+  return stepCriticality(step) !== "required";
+}
+
+export const resilienceSchema = z.object({
+  autoDismiss: z.boolean().default(true),
+  allowContinue: z.boolean().default(true),
+  allowAcceptConsent: z.boolean().default(false),
+});
+export type ResilienceSettings = z.infer<typeof resilienceSchema>;
+
 export const settingsSchema = z.object({
   viewport: z
     .object({ width: z.number().int().positive(), height: z.number().int().positive() })
@@ -294,8 +333,13 @@ export const settingsSchema = z.object({
   stepTimeoutMs: timeoutMsSchema.default(15000),
   runTimeoutMs: timeoutMsSchema.default(300000),
   allowHumanHelp: z.boolean().default(true),
+  resilience: resilienceSchema.optional(),
 });
 export type Settings = z.infer<typeof settingsSchema>;
+
+export function resilienceSettings(settings: Settings): ResilienceSettings {
+  return resilienceSchema.parse(settings.resilience ?? {});
+}
 
 function checkExtractFieldKeys(
   fields: ExtractField[],

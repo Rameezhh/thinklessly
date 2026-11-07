@@ -1,5 +1,6 @@
 import type { Locator, Page } from "playwright";
-import type { Selector } from "@shared/definition";
+import type { Selector, Step } from "@shared/definition";
+import { healLocator } from "./heal";
 import type { LogFn } from "./types";
 
 function toLocator(page: Page, selector: Selector): Locator {
@@ -34,6 +35,7 @@ export async function resolveLocator(
   timeoutMs: number,
   log: LogFn,
   stepId?: string,
+  healStep?: Step,
 ): Promise<ResolvedLocator> {
   const slice = Math.max(500, Math.min(2500, Math.floor(timeoutMs / selectors.length)));
   const failures: string[] = [];
@@ -59,6 +61,11 @@ export async function resolveLocator(
         stepId,
       });
     }
+  }
+
+  if (healStep) {
+    const healed = await healLocator(page, healStep, log, stepId).catch(() => null);
+    if (healed) return healed;
   }
 
   throw new Error(`No selector matched. Tried: ${failures.join(", ")}`);

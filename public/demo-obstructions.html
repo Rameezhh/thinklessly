@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Thinklessly obstruction demo</title>
+    <style>
+      body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 40px; color: #18181b; }
+      .overlay {
+        position: fixed; z-index: 50; padding: 20px 24px; border: 1px solid #d4d4d8;
+        border-radius: 14px; background: #fff; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+        display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+      }
+      #consent { left: 10%; right: 10%; bottom: 8%; min-height: 140px; }
+      #newsletter { left: 12%; right: 12%; bottom: 34%; min-height: 140px; }
+      #region { left: 14%; right: 14%; bottom: 58%; min-height: 140px; }
+      #challenge { left: 18%; right: 18%; top: 6%; min-height: 160px; border-color: #f2c5c0; background: #fde8e6; }
+      button { padding: 8px 14px; font: inherit; cursor: pointer; }
+      #status { margin-top: 20px; font-family: ui-monospace, monospace; color: #3f3f46; }
+      .spacer { flex: 1; }
+    </style>
+  </head>
+  <body>
+    <h1>Obstruction demo</h1>
+    <p>Cookie consent, newsletter, region prompt and a fake human check on one page.</p>
+    <p>The runner should close the first three and leave the human check untouched.</p>
+
+    <div id="consent" class="overlay" role="dialog" aria-label="Cookie notice">
+      <span>We use cookies to improve your experience.</span>
+      <span class="spacer"></span>
+      <button id="consent-accept" type="button">Accept all</button>
+      <button id="consent-reject" type="button">Reject all</button>
+    </div>
+
+    <div id="newsletter" class="overlay" role="dialog" aria-label="Newsletter">
+      <span>Subscribe to our newsletter for weekly deals.</span>
+      <span class="spacer"></span>
+      <button id="newsletter-title" type="button">Subscribe</button>
+      <button id="newsletter-close" type="button">No thanks</button>
+    </div>
+
+    <div id="region" class="overlay" role="dialog" aria-label="Region">
+      <span>Choose your region and language.</span>
+      <span class="spacer"></span>
+      <button id="region-continue" type="button">Continue</button>
+    </div>
+
+    <div id="challenge" class="overlay" role="dialog" aria-label="Human check">
+      <form id="challenge-form" onsubmit="return false">
+        <strong>Enter the characters you see</strong>
+        <input id="challenge-input" type="text" aria-label="Characters" style="margin-left: 10px; padding: 6px" />
+        <button id="challenge-verify" type="button" style="margin-left: 8px">Verify</button>
+      </form>
+    </div>
+
+    <p id="status">No dismissals yet.</p>
+
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px">
+      <button type="button" data-open="consent">Open cookie banner</button>
+      <button type="button" data-open="newsletter">Open newsletter</button>
+      <button type="button" data-open="region">Open region prompt</button>
+      <button type="button" data-open="challenge">Open human check</button>
+    </div>
+
+    <script>
+      const status = document.getElementById("status");
+      const challenge = document.getElementById("challenge");
+
+      function note(message) {
+        status.textContent = message;
+      }
+
+      function hide(id, message) {
+        const element = document.getElementById(id);
+        if (element) element.style.display = "none";
+        note(message);
+      }
+
+      document.getElementById("consent-accept").addEventListener("click", () => hide("consent", "Accepted cookies"));
+      document.getElementById("consent-reject").addEventListener("click", () => hide("consent", "Rejected cookies"));
+      document.getElementById("newsletter-title").addEventListener("click", () => hide("newsletter", "Subscribed"));
+      document.getElementById("newsletter-close").addEventListener("click", () => hide("newsletter", "Closed newsletter"));
+      document.getElementById("region-continue").addEventListener("click", () => hide("region", "Region confirmed"));
+      document.getElementById("challenge-verify").addEventListener("click", () => {
+        window.__challengeClicked = true;
+        note("Challenge Verify was clicked");
+      });
+
+      for (const button of document.querySelectorAll("[data-open]")) {
+        button.addEventListener("click", () => {
+          const target = document.getElementById(button.dataset.open);
+          if (target) target.style.display = "flex";
+        });
+      }
+
+      challenge.style.display = "flex";
+    </script>
+  </body>
+</html>

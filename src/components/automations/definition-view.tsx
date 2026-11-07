@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { AutomationDefinition, ExtractField, Step } from "@shared/definition";
+import { stepCriticality, type AutomationDefinition, type ExtractField, type Step } from "@shared/definition";
 import { DownIcon, UpIcon } from "@/components/brand/icons";
 import {
   convertFillToCredentialAction,
@@ -71,31 +71,31 @@ function fieldLines(field: ExtractField, depth = 0): string[] {
   return lines;
 }
 
-function ImportantToggle({
+function RequiredStepToggle({
   automationId,
   stepId,
-  optional,
+  required,
 }: {
   automationId: string;
   stepId: string;
-  optional: boolean;
+  required: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   return (
     <label className="flex cursor-pointer items-center gap-2 text-[13px] font-medium text-[#14151A]">
       <input
         type="checkbox"
-        checked={!optional}
+        checked={required}
         disabled={pending}
         onChange={(event) => {
-          const important = event.target.checked;
+          const next = event.target.checked;
           startTransition(() => {
-            void setStepOptionalAction(automationId, stepId, !important);
+            void setStepOptionalAction(automationId, stepId, !next);
           });
         }}
         className="h-4 w-4 rounded accent-[#0E0F13]"
       />
-      Important
+      Required
     </label>
   );
 }
@@ -213,8 +213,9 @@ export function DefinitionView({
             {definition.steps.length} steps · start URL: {definition.startUrl}
           </p>
           <p className="mt-0.5 text-[14px] leading-[1.55] text-[#5C6070]">
-            Uncheck “Important” on a step to skip it when its element is missing instead of failing
-            the run.
+            Uncheck “Required” to skip a step when its element changed or is missing instead of
+            failing the run. Inputs, selections and extractions are required; clicks are skippable by
+            default.
           </p>
         </div>
 
@@ -278,8 +279,8 @@ export function DefinitionView({
                     {!step.enabled ? (
                       <span className="text-xs text-[#5C6070]">disabled</span>
                     ) : null}
-                    {step.optional ? (
-                      <span className="text-xs text-[#5C6070]">optional</span>
+                    {stepCriticality(step) !== "required" ? (
+                      <span className="text-xs text-[#5C6070]">{stepCriticality(step)}</span>
                     ) : null}
                   </div>
 
@@ -328,10 +329,10 @@ export function DefinitionView({
                 </div>
 
                 <div className="flex shrink-0 flex-col items-end gap-2">
-                  <ImportantToggle
+                  <RequiredStepToggle
                     automationId={automationId}
                     stepId={step.id}
-                    optional={step.optional}
+                    required={stepCriticality(step) === "required"}
                   />
                   <div className="flex gap-1.5">
                     <button

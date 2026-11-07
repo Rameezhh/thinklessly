@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Thinklessly resilience demo</title>
+    <style>
+      body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 40px; color: #18181b; }
+      button { padding: 9px 14px; font: inherit; cursor: pointer; }
+      .actions { display: flex; gap: 10px; margin-top: 18px; }
+      #status { margin-top: 18px; font-family: ui-monospace, monospace; color: #3f3f46; }
+      #phase { color: #52525b; }
+      #cookie-banner {
+        position: fixed; left: 16px; right: 16px; bottom: 16px;
+        display: flex; gap: 12px; align-items: center; justify-content: space-between;
+        padding: 12px 16px; border: 1px solid #d4d4d8; border-radius: 8px;
+        background: #fafafa; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+      }
+      #cookie-banner[hidden] { display: none; }
+    </style>
+  </head>
+  <body>
+    <h1>Resilience demo</h1>
+    <p id="phase">Stable DOM. The buttons are replaced in about 5 seconds.</p>
+    <p>
+      Record a click on each button <strong>after</strong> the label changes to
+      "DOM changed". Then run the automation: it navigates fresh, the older markup is
+      still present, and the runner heals the stale selectors. A cookie banner also
+      appears and is dismissed automatically.
+    </p>
+
+    <div class="actions" id="actions">
+      <button id="buy-1" data-testid="buy-1" class="buy-primary" type="button">Add to cart</button>
+      <button id="checkout-1" data-testid="checkout-1" type="button">Checkout</button>
+    </div>
+
+    <p id="status">Waiting for a click.</p>
+
+    <div id="cookie-banner" role="dialog" aria-label="Cookie notice" hidden>
+      <span>We use cookies to improve this demo.</span>
+      <button id="cookie-reject" type="button">Reject all</button>
+    </div>
+
+    <script>
+      const status = document.getElementById("status");
+      const phase = document.getElementById("phase");
+      const actions = document.getElementById("actions");
+      const banner = document.getElementById("cookie-banner");
+
+      function report(name) {
+        status.textContent = `${name} clicked at ${new Date().toLocaleTimeString()}`;
+      }
+
+      actions.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (button) report(button.textContent.trim());
+      });
+
+      document.getElementById("cookie-reject").addEventListener("click", () => {
+        banner.hidden = true;
+      });
+
+      setTimeout(() => {
+        banner.hidden = false;
+      }, 700);
+
+      function changeMarkup() {
+        const buy = document.createElement("button");
+        buy.id = "buy-2";
+        buy.dataset.testid = "buy-2";
+        buy.name = "buy-1";
+        buy.type = "button";
+        buy.textContent = "Add to cart now";
+
+        const checkout = document.createElement("button");
+        checkout.id = "checkout-2";
+        checkout.dataset.testid = "checkout-2";
+        checkout.name = "checkout-1";
+        checkout.type = "button";
+        checkout.textContent = "Continue to payment";
+
+        actions.replaceChildren(buy, checkout);
+        phase.textContent = "DOM changed: selectors, ids and labels no longer match the original markup.";
+      }
+
+      const requestedPhase = new URLSearchParams(location.search).get("phase");
+      if (requestedPhase === "changed") {
+        changeMarkup();
+      } else if (requestedPhase !== "stable") {
+        setTimeout(changeMarkup, 5000);
+      }
+    </script>
+  </body>
+</html>

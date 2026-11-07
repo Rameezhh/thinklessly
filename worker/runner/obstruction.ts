@@ -1,46 +1,31 @@
 import type { Page } from "playwright";
 import type { Step } from "@shared/definition";
-import type { LogLevel } from "./types";
+import { continueLabelsFor, isDangerousLabel, looksLikeChallenge } from "@shared/obstructions";
+import { dismissOverlay } from "./obstruction-actions";
+import { findFloatingOverlay, findKnownOverlay } from "./obstruction-find";
+import { clickOnce, isVisible, pickControl } from "./obstruction-helpers";
+import type { Control, Log, ObstructionOptions, ObstructionResult } from "./obstruction-types";
 
-type Log = (level: LogLevel, message: string, stepId?: string) => Promise<void>;
+export type { Log, ObstructionOptions, ObstructionResult } from "./obstruction-types";
 
-const DIALOG_SELECTORS = [
-  '[role="dialog"]',
-  '[role="alertdialog"]',
-  '[data-testid*="modal" i]',
-  '[data-testid*="overlay" i]',
-  '[class*="modal" i]',
-  '[class*="overlay" i]',
-  '[class*="backdrop" i]',
-];
+const handledDialogs = new WeakSet<Page>();
 
-const CLOSE_CONTROLS = [
-  '[aria-label*="close" i]',
-  '[aria-label*="dismiss" i]',
-  '[title*="close" i]',
-  '[data-testid*="close" i]',
-  '[data-testid*="dismiss" i]',
-  'button[class*="close" i]',
-  '[class*="close" i]',
-];
-
-const CLOSE_TEXTS = [
-  "close",
-  "dismiss",
-  "not now",
-  "no thanks",
-  "maybe later",
-  "got it",
-  "ok",
-  "okay",
-  "accept",
-  "continue",
-  "later",
-  "skip",
-];
-
-async function isVisible(target: ReturnType<Page["locator"]>): Promise<boolean> {
-  return target.isVisible().catch(() => false);
+/** Auto-dismisses native alert/confirm dialogs and accepts beforeunload navigations. */
+export function registerDialogHandler(page: Page, log: Log): void {
+  if (handledDialogs.has(page)) return;
+  handledDialogs.add(page);
+  page.on("dialog", (dialog) => {
+    void (async () => {
+      try {
+        const type = dialog.type();
+        if (type === "beforeunload") await dialog.accept();
+        else await dialog.dismiss();
+        await log("info", `Dismissed native ${type} dialog`, undefined);
+      } catch {
+        // A dialog that already closed is not an error.
+      }
+    })();
+  });
 }
 
 /** True when the step deliberately interacts with a dialog, overlay, or close control. */
@@ -53,53 +38,100 @@ export function stepTargetsObstruction(step: Step): boolean {
   return /(overlay|modal|backdrop|dialog|popup|close|dismiss)/.test(haystack);
 }
 
-/**
- * Best-effort removal of unexpected overlays, modals, and popups so a run can
- * continue. Returns true when something was dismissed.
- */
-export async function dismissObstructions(page: Page, log: Log, stepId?: string): Promise<boolean> {
-  if (page.isClosed()) return false;
+const PAGE_INTERSTITIAL =
+  /before you (continue|proceed)|continue (shopping|to the site|to amazon)|choose your (region|country|location)|select your (region|country|location)|you are about to leave|age verification|are you (18|over 18)/i;
 
-  let dialog: ReturnType<Page["locator"]> | null = null;
-  for (const selector of DIALOG_SELECTORS) {
-    const candidate = page.locator(selector).first();
-    if (await isVisible(candidate)) {
-      dialog = candidate;
+/**
+ * Handles full-page interstitials ("Continue shopping", region/age gates) that
+ * are not wrapped in a floating overlay. Only clicks when exactly one visible
+ * safe continue control exists, which keeps it from guessing.
+ */
+async function dismissPageInterstitial(page: Page, log: Log, stepId?: string): Promise<boolean> {
+  const body = await page
+    .locator("body")
+    .innerText({ timeout: 1500 })
+    .catch(() => "");
+  if (!body || !PAGE_INTERSTITIAL.test(body)) return false;
+  if (looksLikeChallenge(body)) return false;
+
+  const labels = [
+    ...continueLabelsFor("interstitial"),
+    ...continueLabelsFor("region"),
+    ...continueLabelsFor("age"),
+  ];
+  const controls = page.locator(
+    "button, a, [role='button'], input[type='submit'], input[type='button']",
+  );
+  const count = Math.min(await controls.count().catch(() => 0), 80);
+  const matches: Control[] = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const locator = controls.nth(index);
+    if (!(await isVisible(locator))) continue;
+    const label = await locator
+      .evaluate((el) => {
+        const input = el as HTMLInputElement;
+        return ((el as HTMLElement).innerText || input.value || el.getAttribute("aria-label") || "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 120);
+      })
+      .catch(() => "");
+    if (!label || isDangerousLabel(label)) continue;
+    if (pickControl([{ locator, label }], labels)) matches.push({ locator, label });
+    if (matches.length > 1) break;
+  }
+
+  if (matches.length !== 1) return false;
+  if (!(await clickOnce(matches[0].locator))) return false;
+
+  await log("info", `Dismissed page interstitial ("${matches[0].label}")`, stepId);
+  await page.waitForTimeout(400);
+  return true;
+}
+
+/**
+ * Best-effort removal of unexpected overlays, modals, cookie banners, region
+ * prompts and interstitials. Real human/CAPTCHA checks are reported instead of
+ * clicked, so the caller can pause or fail with a clear reason.
+ */
+export async function dismissObstructions(
+  page: Page,
+  log: Log,
+  stepId?: string,
+  options: ObstructionOptions = {},
+): Promise<ObstructionResult> {
+  if (page.isClosed()) return { dismissed: false };
+
+  let dismissed = false;
+
+  for (let pass = 0; pass < 5; pass += 1) {
+    // Cookie/consent managers often render inside an iframe, so scan frames as
+    // well as the main document. The main frame is first.
+    const frames = page
+      .frames()
+      .filter((frame) => !frame.isDetached() && (frame === page.mainFrame() || /^https?:/i.test(frame.url())))
+      .slice(0, 6);
+
+    let acted = false;
+    for (const frame of frames) {
+      const overlay = (await findKnownOverlay(frame)) ?? (await findFloatingOverlay(frame));
+      if (!overlay) continue;
+
+      const result = await dismissOverlay(page, overlay, log, stepId, options);
+      if (result.challenge) return { dismissed, challenge: result.challenge };
+      if (!result.dismissed) continue;
+
+      dismissed = true;
+      acted = true;
       break;
     }
-  }
-  if (!dialog) return false;
 
-  for (const selector of CLOSE_CONTROLS) {
-    const control = dialog.locator(selector).first();
-    if (!(await isVisible(control))) continue;
-    if (await control.click({ timeout: 1500 }).then(() => true).catch(() => false)) {
-      await log("info", "Dismissed an unexpected popup (close control)", stepId);
-      await page.waitForTimeout(200);
-      return true;
-    }
+    if (!acted) break;
+    await page.waitForTimeout(120);
   }
 
-  for (const text of CLOSE_TEXTS) {
-    const control = dialog.getByRole("button", { name: text }).first();
-    if (!(await isVisible(control))) continue;
-    if (await control.click({ timeout: 1500 }).then(() => true).catch(() => false)) {
-      await log("info", `Dismissed an unexpected popup (button "${text}")`, stepId);
-      await page.waitForTimeout(200);
-      return true;
-    }
-  }
+  if (await dismissPageInterstitial(page, log, stepId)) dismissed = true;
 
-  try {
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(250);
-  } catch {
-    return false;
-  }
-  if (!(await isVisible(dialog))) {
-    await log("info", "Dismissed an unexpected popup (Escape)", stepId);
-    return true;
-  }
-
-  return false;
+  return { dismissed };
 }

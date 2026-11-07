@@ -57,6 +57,7 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
   const captureDataRef = useRef(captureData);
   const autoStartedRef = useRef(false);
   const watchdogRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const injectTimerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   useEffect(() => {
     captureDataRef.current = captureData;
@@ -72,6 +73,7 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
     return () => {
       window.removeEventListener("message", onMessage);
       if (watchdogRef.current) clearTimeout(watchdogRef.current);
+      if (injectTimerRef.current) clearInterval(injectTimerRef.current);
     };
   }, []);
 
@@ -95,14 +97,46 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
     return () => channel.close();
   }, []);
 
-  function injectCurrentFrame() {
+  function ensureRecorder() {
     const frame = frameRef.current;
     if (!frame) return;
     try {
-      injectRecorder(frame.frame.contentDocument, captureDataRef.current);
+      const doc = frame.frame.contentDocument;
+      const win = frame.frame.contentWindow as
+        | (Window & {
+            __thinklesslyRecorderInstalled?: boolean;
+            __thinklesslyToolbarInstalled?: boolean;
+            __thinklesslyToolbarAttach?: () => void;
+          })
+        | null;
+      if (!doc || !win) return;
+
+      if (win.__thinklesslyRecorderInstalled) {
+        // Soft navigations can remove the toolbar without reloading the
+        // document. Re-attach the existing host instead of reinstalling.
+        if (captureDataRef.current && win.__thinklesslyToolbarInstalled) {
+          win.__thinklesslyToolbarAttach?.();
+        } else {
+          injectRecorder(doc, captureDataRef.current);
+        }
+        return;
+      }
+
+      if (!doc.body) return;
+      injectRecorder(doc, captureDataRef.current);
     } catch {
-      // The frame may still be navigating; the load handler retries.
+      // The frame may be navigating; the interval and load handler retry.
     }
+  }
+
+  function startInjectionWatch() {
+    stopInjectionWatch();
+    injectTimerRef.current = setInterval(ensureRecorder, 1200);
+  }
+
+  function stopInjectionWatch() {
+    if (injectTimerRef.current) clearInterval(injectTimerRef.current);
+    injectTimerRef.current = undefined;
   }
 
   function clearWatchdog() {
@@ -126,6 +160,19 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
           message:
             "The page has not finished loading. It may be blocked, require a bot check, or depend on a resource the proxy cannot fetch.",
         });
+        return;
+      }
+      if (doc && doc.readyState === "complete") {
+        const body = doc.body;
+        const text = body?.innerText?.trim() ?? "";
+        if (!body || (text.length === 0 && body.children.length === 0)) {
+          setFailure({
+            kind: "error",
+            title: "This page rendered nothing",
+            message:
+              "The proxy returned an empty page. Click Retry, then Reset proxy if it stays blank. Some heavily protected sites only work in a real browser.",
+          });
+        }
       }
     }, NAVIGATION_TIMEOUT_MS);
   }
@@ -137,7 +184,7 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
 
   function onFrameLoad() {
     window.setTimeout(() => {
-      injectCurrentFrame();
+      ensureRecorder();
       clearWatchdog();
       checkFailure();
     }, 60);
@@ -197,12 +244,15 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
       frame.addEventListener("urlchange", (event) => {
         session.scheduleNavigation(event.url);
         onNavigation();
+        window.setTimeout(ensureRecorder, 200);
+        window.setTimeout(ensureRecorder, 900);
       });
       session.begin(parsed.toString());
 
       frame.go(parsed.toString());
       setPhase("recording");
       startWatchdog();
+      startInjectionWatch();
       window.setTimeout(onFrameLoad, 600);
     } catch (startError) {
       setPhase("setup");
@@ -255,6 +305,32 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
     startWatchdog();
   }
 
+  async function resetProxy() {
+    clearWatchdog();
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(
+        registrations
+          .filter((registration) => registration.scope.includes("/live/"))
+          .map((registration) => registration.unregister()),
+      );
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(
+          keys
+            .filter((key) => key.includes("live") || key.includes("scram"))
+            .map((key) => caches.delete(key)),
+        );
+      }
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith("bare-mux")) localStorage.removeItem(key);
+      }
+    } catch {
+      // Best effort: reload even if clearing failed.
+    }
+    window.location.reload();
+  }
+
   async function endRecording() {
     const session = sessionRef.current;
     if (!session) return;
@@ -267,6 +343,7 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
       // The iframe may already be navigating.
     }
     await new Promise((resolve) => window.setTimeout(resolve, 180));
+    stopInjectionWatch();
     session.stop();
     const normalized = autoPayloadFields(session.core.fields, session.core.steps);
     session.core.fields = normalized.fields;
@@ -278,6 +355,7 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
   }
 
   function cancelRecording() {
+    stopInjectionWatch();
     sessionRef.current?.stop();
     clearWatchdog();
     const frame = frameRef.current;
@@ -354,16 +432,35 @@ export function LiveRecorder({ initialUrl, initialName = "", autostart = false, 
         ) : null}
 
         {failure ? (
-          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]">
-            <div className="animate-rise w-full max-w-md rounded-3xl border border-[#E5E4DE] bg-white p-6 shadow-2xl">
-              <h2 className="display text-[24px] tracking-[-0.02em]">{failure.title}</h2>
-              <p className="mt-2.5 text-sm leading-relaxed text-[#5C6070]">{failure.message}</p>
-              <p className="mt-4 rounded-xl border border-[#CFE58A] bg-[#FAFDEB] px-3.5 py-2.5 text-xs leading-relaxed text-[#3F5A00]">
-                TODO: add a companion-app/extension fallback for sites the proxy cannot render.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2.5">
+          <div className="pointer-events-none fixed inset-x-0 bottom-20 z-40 flex justify-center px-3">
+            <div className="animate-fade pointer-events-auto w-full max-w-2xl rounded-2xl border border-[#E5E4DE] bg-white p-4 shadow-[0_18px_50px_rgba(14,15,19,0.18)]">
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <h2 className="display text-[18px] tracking-[-0.02em]">{failure.title}</h2>
+                  <p className="mt-1 text-[13px] leading-relaxed text-[#5C6070]">{failure.message}</p>
+                  <p className="mt-2 text-[12px] leading-relaxed text-[#3F5A00]">
+                    This banner does not block the page. Click Continue, the captcha or the close button directly
+                    in the site; recording keeps running.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFailure(null)}
+                  aria-label="Dismiss"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[18px] leading-none text-[#71717A] transition-colors hover:bg-[#F1F0EB] hover:text-[#14151A]"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" onClick={retryFrame} className="btn btn-dark btn-sm">
                   Retry
+                </button>
+                <button type="button" onClick={() => void resetProxy()} className="btn btn-outline btn-sm">
+                  Reset proxy
+                </button>
+                <button type="button" onClick={() => setFailure(null)} className="btn btn-outline btn-sm">
+                  Dismiss
                 </button>
                 <button type="button" onClick={exitSession} className="btn btn-outline btn-sm">
                   Close

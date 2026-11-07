@@ -185,8 +185,17 @@ export class RecorderCore {
     const identity = element.identity || undefined;
     switch (event.kind) {
       case "click": {
-        const optional = isTransientElement(name, element.selectors);
-        return { type: "click", selectors: element.selectors, label: `Click ${name}`, optional, identity };
+        const criticality: "optional" | "preferred" = isTransientElement(name, element.selectors)
+          ? "optional"
+          : "preferred";
+        return {
+          type: "click",
+          selectors: element.selectors,
+          label: `Click ${name}`,
+          optional: criticality === "optional",
+          criticality,
+          identity,
+        };
       }
       case "fill": {
         if (event.secret) {
@@ -197,6 +206,7 @@ export class RecorderCore {
             value: { mode: "field", key },
             label: `Fill ${name} (secret)`,
             secret: true,
+            criticality: "required",
             identity,
           };
         }
@@ -206,6 +216,7 @@ export class RecorderCore {
           value: { mode: "literal", text: event.value },
           label: `Fill ${name}`,
           secret: false,
+          criticality: "required",
           identity,
         };
       }
@@ -215,6 +226,7 @@ export class RecorderCore {
           selectors: element.selectors,
           value: event.value,
           label: `Select ${name}`,
+          criticality: "required",
           identity,
         };
       case "check":
@@ -223,6 +235,7 @@ export class RecorderCore {
           selectors: element.selectors,
           checked: event.checked,
           label: `${event.checked ? "Check" : "Uncheck"} ${name}`,
+          criticality: "required",
           identity,
         };
       case "upload": {
@@ -232,6 +245,7 @@ export class RecorderCore {
           selectors: element.selectors,
           fieldKey: key,
           label: `Upload ${name}`,
+          criticality: "required",
           identity,
         };
       }
@@ -241,6 +255,7 @@ export class RecorderCore {
           selectors: element.selectors,
           key: event.key,
           label: `Press ${event.key}`,
+          criticality: "preferred",
           identity,
         };
     }

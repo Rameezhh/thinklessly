@@ -1,3 +1,5 @@
+import { CHALLENGE_SELECTORS, looksLikeChallenge } from "@shared/obstructions";
+
 export type ProxyFailureKind = "challenge" | "blocked" | "timeout" | "error";
 
 export type ProxyFailure = {
@@ -5,21 +7,6 @@ export type ProxyFailure = {
   title: string;
   message: string;
 };
-
-const CHALLENGE_SIGNATURES = [
-  "just a moment",
-  "attention required",
-  "performing security verification",
-  "checking your browser",
-  "enable javascript and cookies to continue",
-  "verify you are human",
-  "ddos protection by",
-  "cf-browser-verification",
-  "challenge-platform",
-  "unusual traffic",
-  "are you a robot",
-  "complete the security check",
-];
 
 const BLOCKED_SIGNATURES = [
   "there was an error loading",
@@ -30,6 +17,22 @@ const BLOCKED_SIGNATURES = [
   "this page isn't working",
 ];
 
+function isVisible(element: Element): boolean {
+  try {
+    const rect = element.getBoundingClientRect();
+    const style = window.getComputedStyle(element);
+    return (
+      rect.width > 1 &&
+      rect.height > 1 &&
+      style.display !== "none" &&
+      style.visibility !== "hidden" &&
+      style.opacity !== "0"
+    );
+  } catch {
+    return false;
+  }
+}
+
 function collect(doc: Document): string {
   const parts: string[] = [];
   try {
@@ -38,37 +41,37 @@ function collect(doc: Document): string {
     /* ignore */
   }
   try {
-    const body = doc.body?.innerText ?? "";
-    parts.push(body.slice(0, 4000));
+    parts.push((doc.body?.innerText ?? "").slice(0, 4000));
   } catch {
     /* ignore */
   }
-  for (const selector of [
-    "#challenge-form",
-    "#cf-challenge-running",
-    "#cf-please-wait",
-    "iframe[src*='challenges.cloudflare.com']",
-    "script[src*='challenge-platform']",
-  ]) {
+  return parts.join("\n").toLowerCase();
+}
+
+function hasVisibleChallenge(doc: Document): boolean {
+  for (const selector of CHALLENGE_SELECTORS) {
     try {
-      if (doc.querySelector(selector)) parts.push("challenge");
+      const nodes = doc.querySelectorAll(selector);
+      for (const node of Array.from(nodes).slice(0, 4)) {
+        if (isVisible(node)) return true;
+      }
     } catch {
-      /* ignore */
+      // Invalid selector for this document; ignore.
     }
   }
-  return parts.join("\n").toLowerCase();
+  return false;
 }
 
 export function detectProxyFailure(doc: Document | null): ProxyFailure | null {
   if (!doc) return null;
   const haystack = collect(doc);
 
-  if (CHALLENGE_SIGNATURES.some((signature) => haystack.includes(signature))) {
+  if (hasVisibleChallenge(doc) || looksLikeChallenge(haystack)) {
     return {
       kind: "challenge",
-      title: "This site is checking for a real browser",
+      title: "This site is checking the browser",
       message:
-        "A bot/CAPTCHA challenge (e.g. Cloudflare) is blocking the proxy. You can retry, or use a site that does not require it. Hosting the relay on a residential IP usually fixes this.",
+        "Finish the check (for example Continue, a captcha, or “yes I’m human”) directly in the page. Recording keeps running. If the page stays blank, use Retry or Reset proxy.",
     };
   }
 
@@ -77,7 +80,7 @@ export function detectProxyFailure(doc: Document | null): ProxyFailure | null {
       kind: "blocked",
       title: "The site blocked the proxy",
       message:
-        "This page refuses proxied browsers. It will not work through the live proxy right now.",
+        "This page refuses proxied browsers. Switch to the real-browser recorder from the automation page, or retry with Reset proxy.",
     };
   }
 

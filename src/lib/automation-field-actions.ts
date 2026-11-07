@@ -246,7 +246,11 @@ export async function setStepOptionalAction(
   if (!loaded) return;
   if (!findStepById(loaded.definition.steps, stepId)) return;
 
-  const steps = updateStepById(loaded.definition.steps, stepId, (step) => ({ ...step, optional }));
+  const steps = updateStepById(loaded.definition.steps, stepId, (step) => ({
+    ...step,
+    optional,
+    criticality: optional ? "optional" : "required",
+  }));
 
   let updated: AutomationDefinition;
   try {

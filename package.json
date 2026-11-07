@@ -19,6 +19,8 @@
     "prebuild": "pnpm build:live",
     "seed": "tsx prisma/seed.ts",
     "gen:key": "tsx scripts/gen-key.ts",
+    "adblock:fetch": "tsx scripts/fetch-adblock-lists.ts",
+    "smoke": "tsx scripts/smoke-runner.ts && tsx scripts/smoke-obstructions.ts",
     "run-file": "tsx worker/run-file.ts",
     "enqueue-test": "tsx scripts/enqueue-test.ts",
     "sim:tls": "node scripts/local-tls.mjs",
@@ -38,6 +40,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@ghostery/adblocker-playwright": "^2.20.3",
     "@mercuryworkshop/bare-mux": "^2.1.9",
     "@mercuryworkshop/libcurl-transport": "1.5.2",
     "@mercuryworkshop/scramjet": "1.1.0",

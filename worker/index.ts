@@ -148,6 +148,7 @@ async function processRun(run: ClaimedRun): Promise<void> {
       data: {
         status: result.status,
         outputs: toJson(result.outputs),
+        meta: toJson(result.meta),
         error: result.error ?? null,
         ephemeralSecrets: null,
         finishedAt: new Date(),

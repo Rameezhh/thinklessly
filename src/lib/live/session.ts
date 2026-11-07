@@ -2,6 +2,7 @@ import { findElementBySelectors, extractStructuredInDom, readElementAttribute } 
 import { isHttpUrl, type ExtractField, type Field, type Step } from "@shared/definition";
 import { bestApiCandidate } from "@shared/api-match";
 import { shapeApiBody } from "@shared/api-extract";
+import { normalizeWithPlan } from "@shared/normalize";
 import { collectDomSnapshot } from "@shared/dom-snapshot";
 import { buildApiCaptureStep, capturePayloadSchema } from "@shared/recorder-capture";
 import { RecorderCore } from "@shared/recorder-core";
@@ -211,7 +212,8 @@ export class LiveRecorderSession {
       const pushed = this.core.pushCapture(step, selectionId);
       if (!pushed) return false;
 
-      const preview = shapeApiBody(entry.body, step);
+      const rawPreview = shapeApiBody(entry.body, step);
+      const preview = step.outputSchema ? normalizeWithPlan(rawPreview, step.outputSchema) : rawPreview;
       this.previews[pushed.step.id] = preview;
       if (Array.isArray(preview)) this.previewTotals[pushed.step.id] = preview.length;
       return true;

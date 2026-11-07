@@ -22,6 +22,7 @@ declare global {
   interface Window {
     $scramjetLoadController?: () => { ScramjetController: new (config: unknown) => ScramjetControllerLike };
     BareMux?: { BareMuxConnection: new (worker: string) => BareMuxConnectionLike };
+    __thinklesslyBareMux?: BareMuxConnectionLike;
   }
 }
 
@@ -63,15 +64,36 @@ export async function registerLiveServiceWorker(): Promise<void> {
   if (!("serviceWorker" in navigator)) {
     throw new Error("This browser does not support service workers.");
   }
-  const registration = await navigator.serviceWorker.register(SW_URL, { scope: SW_SCOPE });
-  if (registration.active) return;
+  if (!window.isSecureContext) {
+    throw new Error(
+      "Live recording needs a secure browser context. Open http://localhost:3000 (not a LAN/IP address) or use the HTTPS setup: pnpm sim, then https://localhost:8443.",
+    );
+  }
+
+  const registration = await navigator.serviceWorker.register(SW_URL, {
+    scope: SW_SCOPE,
+    updateViaCache: "none",
+  });
+
+  // Force a fresh check so an updated sw.js does not stay stuck in "waiting".
+  await registration.update().catch(() => undefined);
+
+  // Note: `navigator.serviceWorker.ready` is not usable here because this page
+  // is `/live` while the worker scope is `/live/`. Wait on the registration
+  // itself instead, with a bounded timeout so a broken worker cannot hang the UI.
   const pending = registration.installing ?? registration.waiting;
   if (!pending) return;
+
   await new Promise<void>((resolve) => {
-    pending.addEventListener("statechange", () => {
-      if (pending.state === "activated") resolve();
-    });
-    if (pending.state === "activated") resolve();
+    const timer = setTimeout(resolve, 8000);
+    const settle = () => {
+      if (pending.state === "activated" || pending.state === "redundant") {
+        clearTimeout(timer);
+        resolve();
+      }
+    };
+    pending.addEventListener("statechange", settle);
+    settle();
   });
 }
 
@@ -97,20 +119,45 @@ export async function createScramjetController(): Promise<ScramjetControllerLike
 export async function configureTransport(wispUrl: string): Promise<void> {
   if (!wispUrl) throw new Error("The relay URL is not configured.");
   if (!window.BareMux) throw new Error("The transport layer failed to load.");
-  const connection = new window.BareMux.BareMuxConnection(BAREMUX_WORKER);
-  await connection.setTransport(LIBCURL_ENTRY, [
+
+  const options = [
     {
       websocket: wispUrl,
       // [total, cache, per-host]: libcurl defaults to 6 per host, which queues
       // API-heavy pages. Allow more parallel connections per host.
       connections: [100, 40, 32],
     },
-  ]);
+  ];
+
+  async function connect(): Promise<void> {
+    const connection =
+      window.__thinklesslyBareMux ?? new window.BareMux!.BareMuxConnection(BAREMUX_WORKER);
+    window.__thinklesslyBareMux = connection;
+    await connection.setTransport(LIBCURL_ENTRY, options);
+  }
+
+  try {
+    await connect();
+  } catch {
+    // A shared-worker port can go stale across restarts. Drop the cached
+    // connection and retry once with a fresh worker path.
+    window.__thinklesslyBareMux = undefined;
+    try {
+      localStorage.removeItem("bare-mux-path");
+    } catch {
+      // Storage may be unavailable in private mode.
+    }
+    await connect();
+  }
 }
 
 export function defaultWispUrl(): string {
+  const secure = window.location.protocol === "https:";
   const configured = process.env.NEXT_PUBLIC_WISP_URL;
-  if (configured) return configured;
-  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  return `${protocol}://${window.location.host}/live/wisp/`;
+
+  // A ws:// relay cannot be reached from an https:// page (mixed content), so
+  // prefer the same-origin wss route used by the HTTPS proxy setup.
+  if (configured && !(secure && configured.startsWith("ws://"))) return configured;
+
+  return `${secure ? "wss" : "ws"}://${window.location.host}/live/wisp/`;
 }

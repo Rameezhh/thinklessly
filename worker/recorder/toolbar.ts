@@ -9,6 +9,7 @@ export function toolbarInitScript() {
     __thinklesslyInferAuto?: (el: Element) => { scope: Element; root: unknown } | null;
     __thinklesslyDetectSections?: () => { el: Element; label: string; kind: string }[];
     __thinklesslyRemove?: (selectionId: string) => void;
+    __thinklesslyToolbarAttach?: () => void;
   };
 
   type Selection = { id: number; clientId: string; label: string; kind: "data" | "value"; payload: unknown };
@@ -508,9 +509,13 @@ export function toolbarInitScript() {
   let attached = false;
 
   function attach() {
-    if (attached || !document.documentElement) return;
+    if (!document.documentElement) return;
+    // A soft navigation (SPA) can replace the document tree without unloading
+    // the window. Re-append the existing host so the recorder survives it
+    // instead of creating a second toolbar with duplicate listeners.
+    if (!host.isConnected) document.documentElement.append(host);
+    if (attached) return;
     attached = true;
-    document.documentElement.append(host);
     document.addEventListener("mousemove", onMouseMove, true);
     document.addEventListener("mousedown", onMouseDown, true);
     document.addEventListener("click", onClick, true);
@@ -520,6 +525,8 @@ export function toolbarInitScript() {
     host.addEventListener("click", (event) => event.stopPropagation());
     host.addEventListener("mousedown", (event) => event.stopPropagation());
   }
+
+  w.__thinklesslyToolbarAttach = attach;
 
   updatePanel();
 

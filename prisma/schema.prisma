@@ -120,6 +120,7 @@ model Run {
   inputs           String
   ephemeralSecrets String?
   outputs          String?
+  meta             String?
   error            String?
   scheduledAt      DateTime          @default(now())
   startedAt        DateTime?

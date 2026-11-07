@@ -131,6 +131,7 @@ type RunForApi = {
   status: string;
   triggerSource: string;
   outputs: string | null;
+  meta: string | null;
   error: string | null;
   createdAt: Date;
   startedAt: Date | null;
@@ -146,6 +147,7 @@ export function serializeRun(run: RunForApi) {
     status: run.status,
     triggerSource: run.triggerSource,
     outputs: fromJson<Record<string, unknown>>(run.outputs ?? "{}", {}),
+    meta: fromJson<Record<string, unknown>>(run.meta ?? "{}", {}),
     error: run.error,
     createdAt: run.createdAt,
     startedAt: run.startedAt,
@@ -162,6 +164,7 @@ export async function findApiRun(teamId: string, runId: string) {
       status: true,
       triggerSource: true,
       outputs: true,
+      meta: true,
       error: true,
       createdAt: true,
       startedAt: true,

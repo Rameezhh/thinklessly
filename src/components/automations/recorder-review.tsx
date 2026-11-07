@@ -1,6 +1,6 @@
 "use client";
 
-import { outputKeySchema, type ExtractField, type Field, type Step } from "@shared/definition";
+import { outputKeySchema, stepCriticality, type ExtractField, type Field, type Step } from "@shared/definition";
 import { outputIssuesForSteps } from "@shared/outputs";
 import { ExtractionTreeEditor } from "./extraction-tree-editor";
 
@@ -139,8 +139,8 @@ export function RecorderReview({ steps, fields, previews, previewTotals, editabl
                       {!step.enabled ? (
                         <span className="text-xs text-[#5C6070]">disabled</span>
                       ) : null}
-                      {step.optional ? (
-                        <span className="text-xs text-[#5C6070]">optional</span>
+                      {stepCriticality(step) !== "required" ? (
+                        <span className="text-xs text-[#5C6070]">{stepCriticality(step)}</span>
                       ) : null}
                     </div>
                     <p className="mt-0.5 truncate font-mono text-xs text-[#5C6070]">
@@ -169,6 +169,15 @@ export function RecorderReview({ steps, fields, previews, previewTotals, editabl
                               .join(" · ")}
                           </p>
                         ) : null}
+                        {step.outputSchema && step.outputSchema.fields.length > 0 ? (
+                          <p className="mono mt-1 break-words text-[11px] text-[#3F5A00]">
+                            Canonical schema:{" "}
+                            {step.outputSchema.fields
+                              .slice(0, 20)
+                              .map((field) => `${field.key}:${field.type}`)
+                              .join(", ")}
+                          </p>
+                        ) : null}
                         <SingleKeyEditor
                           value={step.outputKey}
                           disabled={!editable}
@@ -184,7 +193,8 @@ export function RecorderReview({ steps, fields, previews, previewTotals, editabl
                               {JSON.stringify(preview, null, 2)}
                             </pre>
                             <p className="mt-2 text-[11px] text-[#5C6070]">
-                              Each run reads this endpoint again, so new rows and renamed keys are returned as-is.
+                              Each run reads this endpoint again and maps it onto the canonical schema above, so
+                              renamed keys still come back in the same shape.
                             </p>
                           </details>
                         ) : null}

@@ -10,6 +10,7 @@ export function recorderInitScript() {
     __thinklesslyRelativeSelector?: (scope: Element, el: Element) => string | null;
     __thinklesslyEscape?: (value: string) => string;
     __thinklesslyFlush?: () => void;
+    __thinklesslyObstructionDismissing?: boolean;
   };
 
   const w = window as RecorderWindow;
@@ -407,7 +408,7 @@ export function recorderInitScript() {
   }
 
   function handleClick(event: MouseEvent) {
-    if (w.__thinklesslyPickMode || isUiEvent(event)) return;
+    if (w.__thinklesslyPickMode || w.__thinklesslyObstructionDismissing || isUiEvent(event)) return;
     const el = resolveTarget(event.target);
     if (!el || (el as HTMLButtonElement).disabled) return;
 
@@ -420,7 +421,7 @@ export function recorderInitScript() {
   }
 
   function handleInput(event: Event) {
-    if (w.__thinklesslyPickMode || isUiEvent(event)) return;
+    if (w.__thinklesslyPickMode || w.__thinklesslyObstructionDismissing || isUiEvent(event)) return;
     const el = resolveTarget(event.target);
     if (!el) return;
     const tag = el.tagName.toLowerCase();
@@ -434,7 +435,7 @@ export function recorderInitScript() {
   }
 
   function handleChange(event: Event) {
-    if (w.__thinklesslyPickMode || isUiEvent(event)) return;
+    if (w.__thinklesslyPickMode || w.__thinklesslyObstructionDismissing || isUiEvent(event)) return;
     const el = resolveTarget(event.target);
     if (!el) return;
     const tag = el.tagName.toLowerCase();

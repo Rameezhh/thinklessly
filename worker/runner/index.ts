@@ -1,11 +1,13 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { Browser, BrowserContext, Page } from "playwright";
+import { resilienceSettings, stepCriticality } from "@shared/definition";
+import type { OutputMeta } from "@shared/normalize";
 import { redactSecrets } from "@shared/redact";
 import { openBrowser, type BrowserSession } from "../browser/launch";
 import { NetworkCollector } from "../network/collector";
 import { detectBlocked } from "./blocked";
-import { dismissObstructions, stepTargetsObstruction } from "./obstruction";
+import { dismissObstructions, registerDialogHandler, stepTargetsObstruction } from "./obstruction";
 import { executeStep } from "./steps";
 import type { RunArtifactInfo, RunOptions, RunResult, StepContext } from "./types";
 
@@ -36,8 +38,21 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
   const { definition, inputs, secrets, runDir, onLog, shouldCancel } = options;
   const headless = options.headless ?? false;
   const settings = definition.settings;
+  const resilience = resilienceSettings(settings);
+  const obstructionOptions = {
+    allowContinue: resilience.allowContinue,
+    allowAcceptConsent: resilience.allowAcceptConsent,
+  };
   const outputs: Record<string, unknown> = {};
+  const meta: Record<string, OutputMeta> = {};
   const artifacts: RunArtifactInfo[] = [];
+
+  const humanHelpResult = (reason: string, stepId: string): RunResult => {
+    if (!settings.allowHumanHelp) {
+      throw new Error(`${reason}. Human help is disabled for this automation.`);
+    }
+    return { status: "NEEDS_HUMAN", outputs, meta, artifacts, error: reason, failedStepId: stepId };
+  };
 
   const log = async (level: "info" | "warn" | "error", message: string, stepId?: string) => {
     try {
@@ -76,6 +91,7 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
     context = session.context;
     page = context.pages()[0] ?? (await context.newPage());
     page.setDefaultTimeout(settings.stepTimeoutMs);
+    registerDialogHandler(page, log);
     network = new NetworkCollector(context);
 
     await log("info", `Browser started (${headless ? "headless" : "visible"})`);
@@ -89,7 +105,7 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
 
       if (shouldCancel && (await shouldCancel())) {
         await log("warn", "Run cancelled by request", step.id);
-        return { status: "CANCELLED", outputs, artifacts, error: "Run cancelled" };
+        return { status: "CANCELLED", outputs, meta, artifacts, error: "Run cancelled" };
       }
 
       await log("info", `Step ${step.id}: ${step.label ?? step.type}`, step.id);
@@ -103,6 +119,7 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
         inputs,
         secrets,
         outputs,
+        meta,
         artifacts,
         runDir,
         timeout: step.timeoutMs ?? settings.stepTimeoutMs,
@@ -111,8 +128,15 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
         networkCursor,
       };
 
-      if (!stepTargetsObstruction(step)) {
-        await dismissObstructions(page, log, step.id).catch(() => false);
+      if (resilience.autoDismiss && !stepTargetsObstruction(step)) {
+        const cleared = await dismissObstructions(page, log, step.id, obstructionOptions).catch(() => ({
+          dismissed: false,
+          challenge: undefined,
+        }));
+        if (cleared.challenge) {
+          await log("warn", `${cleared.challenge}. Human help is required.`, step.id);
+          return humanHelpResult(cleared.challenge, step.id);
+        }
       }
 
       let attempt = 0;
@@ -122,8 +146,8 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
 
           if (outcome.blocked?.blocked) {
             const reason = outcome.blocked.reason ?? "Human verification required";
-            await log("warn", `${reason}. Human help is required.`, step.id);
-            return { status: "NEEDS_HUMAN", outputs, artifacts, error: reason, failedStepId: step.id };
+            await log("warn", `${reason}.`, step.id);
+            return humanHelpResult(reason, step.id);
           }
 
           await log("info", `Step ${step.id}: done`, step.id);
@@ -134,21 +158,29 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
 
           if (blocked.blocked) {
             const reason = blocked.reason ?? "Human verification required";
-            await log("warn", `${reason}. Human help is required.`, step.id);
-            return { status: "NEEDS_HUMAN", outputs, artifacts, error: reason, failedStepId: step.id };
+            await log("warn", `${reason}.`, step.id);
+            return humanHelpResult(reason, step.id);
           }
 
-          if (attempt === 0) {
-            const cleared = await dismissObstructions(page, log, step.id).catch(() => false);
-            if (cleared) {
+          if (attempt === 0 && resilience.autoDismiss) {
+            const cleared = await dismissObstructions(page, log, step.id, obstructionOptions).catch(() => ({
+              dismissed: false,
+              challenge: undefined,
+            }));
+            if (cleared.challenge) {
+              await log("warn", `${cleared.challenge}. Human help is required.`, step.id);
+              return humanHelpResult(cleared.challenge, step.id);
+            }
+            if (cleared.dismissed) {
               await log("warn", "Cleared an unexpected popup; retrying the step.", step.id);
               attempt += 1;
               continue;
             }
           }
 
-          if (step.optional) {
-            await log("warn", `Optional step failed and was skipped: ${message}`, step.id);
+          const criticality = stepCriticality(step);
+          if (criticality !== "required") {
+            await log("warn", `${criticality} step failed and was skipped: ${message}`, step.id);
             break;
           }
 
@@ -161,6 +193,7 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
       return {
         status: "FAILED",
         outputs,
+        meta,
         artifacts,
         error: `Run timed out after ${settings.runTimeoutMs}ms`,
         failedStepId: currentStepId,
@@ -168,12 +201,13 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
     }
 
     await log("info", "Run completed successfully");
-    return { status: "SUCCESS", outputs, artifacts };
+    return { status: "SUCCESS", outputs, meta, artifacts };
   } catch (error) {
     if (timedOut) {
       return {
         status: "FAILED",
         outputs,
+        meta,
         artifacts,
         error: `Run timed out after ${settings.runTimeoutMs}ms`,
         failedStepId: currentStepId,
@@ -186,7 +220,7 @@ export async function runAutomation(options: RunOptions): Promise<RunResult> {
 
     const message = redactSecrets(errorMessage(error), secrets);
     await log("error", message, currentStepId);
-    return { status: "FAILED", outputs, artifacts, error: message, failedStepId: currentStepId };
+    return { status: "FAILED", outputs, meta, artifacts, error: message, failedStepId: currentStepId };
   } finally {
     clearTimeout(overallTimer);
     if (session) {

@@ -81,6 +81,7 @@ async function main() {
       {
         status: result.status,
         outputs: result.outputs,
+        meta: result.meta,
         error: result.error,
         failedStepId: result.failedStepId,
         artifacts: result.artifacts.map((artifact) => ({

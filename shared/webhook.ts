@@ -34,6 +34,7 @@ export async function sendRunWebhook(runId: string): Promise<void> {
       status: run.status,
       triggerSource: run.triggerSource,
       outputs: fromJson<Record<string, unknown>>(run.outputs ?? "{}", {}),
+      meta: fromJson<Record<string, unknown>>(run.meta ?? "{}", {}),
       error: run.error,
       createdAt: run.createdAt,
       startedAt: run.startedAt,

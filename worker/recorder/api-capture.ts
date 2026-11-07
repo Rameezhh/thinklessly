@@ -2,11 +2,13 @@ import type { Page } from "playwright";
 import type { ExtractField } from "@shared/definition";
 import { bestApiCandidate } from "@shared/api-match";
 import { shapeApiBody } from "@shared/api-extract";
+import { normalizeWithPlan } from "@shared/normalize";
 import { buildApiCaptureStep, capturePayloadSchema, type ApiCaptureStep } from "@shared/recorder-capture";
 import { collectDomSnapshot } from "@shared/dom-snapshot";
 import { normalizeOutputKey } from "@shared/outputs";
 import type { RecorderCore, PushResult } from "@shared/recorder-core";
 import type { NetworkCollector } from "../network/collector";
+import { patchKeepNames } from "../runner/page-eval";
 import { resolveLocator } from "../runner/selectors";
 
 export type ApiCaptureInfo = {
@@ -40,6 +42,7 @@ export async function captureApiStep(options: {
 
   try {
     const { locator } = await resolveLocator(page, containerSelectors, 2500, () => undefined, "capture");
+    await patchKeepNames(locator);
     const snapshot = await locator.evaluate(collectDomSnapshot);
     const candidate = bestApiCandidate(snapshot, network.entries, 0.5);
     if (!candidate) return null;
@@ -69,9 +72,12 @@ export async function captureApiStep(options: {
     const pushed = core.pushCapture(step, selectionId);
     if (!pushed) return null;
 
+    const rawPreview = shapeApiBody(entry.body, step);
+    const preview = step.outputSchema ? normalizeWithPlan(rawPreview, step.outputSchema) : rawPreview;
+
     return {
       pushed,
-      preview: shapeApiBody(entry.body, step),
+      preview,
       api: {
         score: Number(candidate.score.toFixed(3)),
         method: candidate.method,

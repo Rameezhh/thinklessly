@@ -1,3 +1,4 @@
+import { autoDismissInitScript } from "@worker/recorder/auto-dismiss";
 import { buildInferScript } from "@worker/recorder/infer";
 import { buildRecorderScript } from "@worker/recorder/script";
 import { buildSectionsScript } from "@worker/recorder/sections";
@@ -17,7 +18,7 @@ const BRIDGE = `(() => {
 })();`;
 
 export function recorderBundle(captureData = true): string {
-  const scripts = [BRIDGE, buildRecorderScript()];
+  const scripts = [BRIDGE, buildRecorderScript(), autoDismissInitScript()];
   if (captureData) scripts.push(buildInferScript(), buildSectionsScript(), buildToolbarScript());
   return scripts.join("\n");
 }

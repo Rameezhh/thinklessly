@@ -7,6 +7,8 @@ import {
   type Step,
 } from "./definition";
 import { buildApiMatch, type ApiCandidate } from "./api-match";
+import { shapeApiBody } from "./api-extract";
+import { buildPlan } from "./normalize";
 import type { NetworkEntry } from "./network";
 import { normalizeOutputKey, uniqueOutputKey, validateStructuredField } from "./outputs";
 
@@ -100,10 +102,11 @@ export function buildApiCaptureStep(
     | "DELETE";
   const authLike = AUTH_LIKE.test(entry.url);
 
-  return {
+  const step: ApiCaptureStep = {
     type: "extractApi",
     outputKey,
     label: `Extract ${name} (API)`,
+    criticality: "required",
     request: {
       method,
       url: entry.url.slice(0, 4000),
@@ -123,6 +126,9 @@ export function buildApiCaptureStep(
     container: input.fallbackSelectors?.length ? input.fallbackSelectors : container.selectors,
     fallback: input.fallback,
   };
+
+  step.outputSchema = buildPlan(shapeApiBody(entry.body, step), { key: outputKey });
+  return step;
 }
 
 export function buildCaptureStep(payload: unknown, existingSteps: Step[]): CaptureBuildResult {
@@ -145,6 +151,7 @@ export function buildCaptureStep(payload: unknown, existingSteps: Step[]): Captu
         attribute: data.attribute,
         outputKey,
         label: `Extract ${name}`,
+        criticality: "required",
       },
     };
   }
@@ -166,6 +173,7 @@ export function buildCaptureStep(payload: unknown, existingSteps: Step[]): Captu
       selectors: data.container.selectors,
       root,
       label: `Extract ${data.container.name || data.container.tag || "data"}`,
+      criticality: "required",
     },
   };
 }

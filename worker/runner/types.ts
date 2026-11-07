@@ -1,5 +1,6 @@
 import type { Page } from "playwright";
 import type { AutomationDefinition, Settings } from "@shared/definition";
+import type { OutputMeta } from "@shared/normalize";
 import type { NetworkCollector } from "../network/collector";
 
 export type RunStatus = "SUCCESS" | "FAILED" | "NEEDS_HUMAN" | "CANCELLED";
@@ -22,6 +23,7 @@ export type RunArtifactInfo = {
 export type RunResult = {
   status: RunStatus;
   outputs: Record<string, unknown>;
+  meta: Record<string, OutputMeta>;
   error?: string;
   failedStepId?: string;
   message?: string;
@@ -46,6 +48,7 @@ export type StepContext = {
   inputs: Record<string, unknown>;
   secrets: Record<string, string>;
   outputs: Record<string, unknown>;
+  meta: Record<string, OutputMeta>;
   artifacts: RunArtifactInfo[];
   runDir: string;
   timeout: number;

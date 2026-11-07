@@ -1,5 +1,6 @@
 import type { Locator } from "playwright";
 import type { ExtractField } from "@shared/definition";
+import { patchKeepNames } from "./page-eval";
 
 type PlanField = {
   kind: "value" | "object" | "list";
@@ -122,9 +123,6 @@ export async function extractStructured(
     maxItems: options.maxItems ?? 500,
     maxText: options.maxText ?? 100_000,
   };
-  await container.evaluate(() => {
-    const scope = window as unknown as { __name?: (fn: unknown) => unknown };
-    scope.__name ??= (fn) => fn;
-  });
+  await patchKeepNames(container);
   return container.evaluate(extractInPage, plan);
 }

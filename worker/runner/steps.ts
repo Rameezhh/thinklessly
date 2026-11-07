@@ -2,7 +2,9 @@ import { mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { Locator } from "playwright";
 import type { CheckValue, FillValue, Selector, SelectValue, Step } from "@shared/definition";
+import { metaForValue } from "@shared/normalize";
 import { resolveLocator } from "./selectors";
+import { settleAfterAction, settleAfterNavigation } from "./settle";
 import { extractStructured } from "./structured";
 import { runApiExtract } from "./api";
 import { blockedFromStatus, detectBlocked, type BlockedInfo } from "./blocked";
@@ -61,11 +63,13 @@ export async function executeStep(step: Step, ctx: StepContext): Promise<StepOut
       ctx.timeout,
       (entry) => ctx.log(entry.level, entry.message, entry.stepId ?? step.id),
       step.id,
+      step,
     );
 
   switch (step.type) {
     case "goto": {
       const response = await page.goto(step.url, { waitUntil: "domcontentloaded", timeout: ctx.timeout });
+      await settleAfterNavigation(page, ctx.timeout);
       await log("info", `Navigated to ${step.url}`);
       const statusReason = blockedFromStatus(response?.status());
       if (statusReason) return { blocked: { blocked: true, reason: statusReason } };
@@ -74,9 +78,17 @@ export async function executeStep(step: Step, ctx: StepContext): Promise<StepOut
 
     case "click": {
       const { locator, selector } = await resolve(step.selectors);
-      await locator.click({ timeout: ctx.timeout });
+      try {
+        await locator.click({ timeout: ctx.timeout });
+      } catch (error) {
+        await locator.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => undefined);
+        await locator.click({ timeout: 3000, force: true }).catch(() => {
+          throw error;
+        });
+        await log("warn", "Click needed a forced retry because the element was intercepted");
+      }
       await log("info", `Clicked using ${selector.kind} selector`);
-      await page.waitForTimeout(300);
+      await settleAfterAction(page, ctx.timeout);
       return { blocked: await detectBlocked(page) };
     }
 
@@ -166,13 +178,16 @@ export async function executeStep(step: Step, ctx: StepContext): Promise<StepOut
         value = await locator.getAttribute(step.attribute, { timeout: ctx.timeout });
       }
       ctx.outputs[step.outputKey] = value;
+      ctx.meta[step.outputKey] = metaForValue(value, "html");
       await log("info", `Extracted "${step.outputKey}"`);
       break;
     }
 
     case "extractStructured": {
       const { locator } = await resolve(step.selectors);
-      ctx.outputs[step.root.key] = await extractStructured(locator, step.root);
+      const value = await extractStructured(locator, step.root);
+      ctx.outputs[step.root.key] = value;
+      ctx.meta[step.root.key] = metaForValue(value, "html");
       await log("info", `Extracted structured data into "${step.root.key}"`);
       break;
     }

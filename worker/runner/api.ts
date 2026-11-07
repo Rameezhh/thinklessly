@@ -1,5 +1,6 @@
 import type { ExtractApiStep } from "@shared/definition";
 import { shapeApiBody } from "@shared/api-extract";
+import { buildOutputMeta, buildPlan, normalizeWithPlan } from "@shared/normalize";
 import { resolveLocator } from "./selectors";
 import { extractStructured } from "./structured";
 import type { StepContext } from "./types";
@@ -128,7 +129,8 @@ export async function runApiExtract(step: ExtractApiStep, ctx: StepContext): Pro
   if (body === undefined && step.fallback && step.container) {
     try {
       const { locator } = await resolveLocator(ctx.page, step.container, ctx.timeout, () => undefined, step.id);
-      return await extractStructured(locator, step.fallback);
+      const fallbackValue = await extractStructured(locator, step.fallback);
+      return finalize(step, fallbackValue, ctx, "html", " (DOM fallback)");
     } catch {
       // Fall through to the API error below.
     }
@@ -145,5 +147,27 @@ export async function runApiExtract(step: ExtractApiStep, ctx: StepContext): Pro
     `API ${step.request.method} ${step.match.pathname} -> "${step.outputKey}"${usedPassive ? " (observed)" : " (replayed)"}`,
     step.id,
   );
-  return merged;
+  return finalize(step, merged, ctx, "api", "");
+}
+
+/** Normalizes the response with the record-time plan and records output metadata. */
+function finalize(
+  step: ExtractApiStep,
+  value: unknown,
+  ctx: StepContext,
+  source: "api" | "html",
+  suffix: string,
+): unknown {
+  const plan = step.outputSchema ?? buildPlan(value, { key: step.outputKey });
+  const normalized = normalizeWithPlan(value, plan);
+  ctx.meta[step.outputKey] = buildOutputMeta(normalized, plan, source, {
+    endpoint: step.request.url,
+    method: step.request.method,
+  });
+  void ctx.log(
+    "info",
+    `Normalized "${step.outputKey}" with ${plan.fields.length} canonical field(s)${suffix}`,
+    step.id,
+  );
+  return normalized;
 }
