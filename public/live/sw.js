@@ -14,6 +14,17 @@ self.addEventListener("activate", (event) => {
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();
 
+const SW_PROBE = "thinklessly-sw-2";
+
+self.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || data.type !== "thinklessly-probe" || !event.ports[0]) return;
+  event.ports[0].postMessage({ probe: SW_PROBE });
+});
+
+const PROXY_PREFIX = "/live/proxy/";
+const WASM_PATH = "/live/vendor/scram/scramjet.wasm.wasm";
+
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 const MAX_REQUESTS = 120;
 
@@ -219,6 +230,17 @@ async function handleRequest(event) {
   return fetch(event.request);
 }
 
+function isProxiedRequest(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    if (url.origin !== self.location.origin) return false;
+    return url.pathname.startsWith(PROXY_PREFIX) || url.pathname === WASM_PATH;
+  } catch {
+    return false;
+  }
+}
+
 self.addEventListener("fetch", (event) => {
+  if (!isProxiedRequest(event.request.url)) return;
   event.respondWith(handleRequest(event));
 });

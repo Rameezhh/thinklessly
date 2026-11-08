@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { outputKeySchema, type ExtractField, type Step } from "@shared/definition";
 import { validateStructuredField } from "@shared/outputs";
 import { renameOutputsAction, type OutputPanelState } from "@/lib/output-actions";
+import { Card, CardBody, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ExtractionTreeEditor } from "./extraction-tree-editor";
 
 type ExtractStep = Extract<Step, { type: "extract" | "extractStructured" | "extractApi" }>;
@@ -56,103 +57,107 @@ export function OutputsPanel({
 
   if (steps.length === 0) {
     return (
-      <section className="card">
-        <h2 className="card-title">JSON outputs</h2>
-        <p className="card-desc">
-          This automation does not extract any data yet. Re-record it with “Capture data from page” enabled to
-          select a table, list, cards, or any element.
-        </p>
-      </section>
+      <Card>
+        <CardHeader>
+          <CardTitle>JSON outputs</CardTitle>
+          <CardDescription>
+            This automation does not extract any data yet. Re-record it with “Capture data from page”
+            enabled to select a table, list, cards, or any element.
+          </CardDescription>
+        </CardHeader>
+      </Card>
     );
   }
 
   return (
-    <section className="card">
-      <div>
-        <h2 className="card-title">JSON outputs</h2>
-        <p className="card-desc">
-          Rename keys here at any time. Saving creates a new version; older runs keep their original keys. Each
-          run reads fresh values from the page.
-        </p>
-      </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>JSON outputs</CardTitle>
+        <CardDescription>
+          Rename keys here at any time. Saving creates a new version; older runs keep their original keys.
+          Each run reads fresh values from the page.
+        </CardDescription>
+      </CardHeader>
 
-      <form action={formAction} className="mt-4 space-y-4">
-        <input type="hidden" name="payload" value={payload} readOnly />
+      <CardBody>
+        <form action={formAction} className="space-y-4">
+          <input type="hidden" name="payload" value={payload} readOnly />
 
-        {edits.map((edit) => {
-          if (edit.type === "extract" || edit.type === "extractApi") {
-            const valid = outputKeySchema.safeParse(edit.outputKey).success;
+          {edits.map((edit) => {
+            if (edit.type === "extract" || edit.type === "extractApi") {
+              const valid = outputKeySchema.safeParse(edit.outputKey).success;
+              return (
+                <div key={edit.id} className="rounded-2xl border border-[#E5E4DE] bg-white p-4">
+                  <label className="flex max-w-sm flex-col gap-1">
+                    <span className="mono text-[11px] uppercase tracking-[0.06em] text-[#5C6070]">
+                      {edit.type === "extractApi" ? "API output / JSON key" : "Output / JSON key"}
+                    </span>
+                    <input
+                      value={edit.outputKey}
+                      onChange={(event) =>
+                        setEdits((current) =>
+                          current.map((item) =>
+                            item.id === edit.id && item.type === edit.type
+                              ? { ...item, outputKey: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                      spellCheck={false}
+                      className={`${inputClass} ${valid ? "" : "!border-[#B42318]"}`}
+                    />
+                  </label>
+                </div>
+              );
+            }
+
             return (
-              <div key={edit.id} className="rounded-2xl border border-[#E5E4DE] bg-white p-4">
-                <label className="flex max-w-sm flex-col gap-1">
-                  <span className="mono text-[11px] uppercase tracking-[0.06em] text-[#5C6070]">
-                    {edit.type === "extractApi" ? "API output / JSON key" : "Output / JSON key"}
-                  </span>
-                  <input
-                    value={edit.outputKey}
-                    onChange={(event) =>
-                      setEdits((current) =>
-                        current.map((item) =>
-                          item.id === edit.id && item.type === edit.type
-                            ? { ...item, outputKey: event.target.value }
-                            : item,
-                        ),
-                      )
-                    }
-                    spellCheck={false}
-                    className={`${inputClass} ${valid ? "" : "!border-[#B42318]"}`}
-                  />
-                </label>
+              <div key={edit.id}>
+                <ExtractionTreeEditor
+                  root={edit.root}
+                  onChange={(root) =>
+                    setEdits((current) =>
+                      current.map((item) =>
+                        item.id === edit.id && item.type === "extractStructured" ? { ...item, root } : item,
+                      ),
+                    )
+                  }
+                />
               </div>
             );
-          }
+          })}
 
-          return (
-            <div key={edit.id}>
-              <ExtractionTreeEditor
-                root={edit.root}
-                onChange={(root) =>
-                  setEdits((current) =>
-                    current.map((item) =>
-                      item.id === edit.id && item.type === "extractStructured" ? { ...item, root } : item,
-                    ),
-                  )
-                }
-              />
-            </div>
-          );
-        })}
+          {issues.length > 0 ? (
+            <p className="rounded-xl border border-[#CFE58A] bg-[#FAFDEB] px-4 py-3 text-sm text-[#3F5A00]">
+              {issues[0]}
+              {issues.length > 1 ? ` (+${issues.length - 1} more)` : ""}
+            </p>
+          ) : null}
 
-        {issues.length > 0 ? (
-          <p className="rounded-xl border border-[#CFE58A] bg-[#FAFDEB] px-4 py-3 text-sm text-[#3F5A00]">
-            {issues[0]}
-            {issues.length > 1 ? ` (+${issues.length - 1} more)` : ""}
-          </p>
-        ) : null}
+          {state.error ? (
+            <p
+              role="alert"
+              className="rounded-xl border border-[#F2C5C0] bg-[#FDE8E6] px-4 py-3 text-sm text-[#B42318]"
+            >
+              {state.error}
+            </p>
+          ) : null}
 
-        {state.error ? (
-          <p
-            role="alert"
-            className="rounded-xl border border-[#F2C5C0] bg-[#FDE8E6] px-4 py-3 text-sm text-[#B42318]"
+          {state.success ? (
+            <p className="rounded-xl border border-emerald-200 bg-[#FAFDEB] px-4 py-3 text-sm text-[#0B6B43]">
+              {state.success}
+            </p>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={saving || !changed || issues.length > 0}
+            className="btn btn-dark"
           >
-            {state.error}
-          </p>
-        ) : null}
-
-        {state.success ? (
-          <p className="rounded-xl border border-emerald-200 bg-[#FAFDEB] px-4 py-3 text-sm text-[#0B6B43]">
-            {state.success}
-          </p>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={saving || !changed || issues.length > 0}
-          className="btn btn-dark"
-        >
-          {saving ? "Saving..." : "Save output keys"}
-        </button>
-      </form>
-    </section>
+            {saving ? "Saving..." : "Save output keys"}
+          </button>
+        </form>
+      </CardBody>
+    </Card>
   );
 }

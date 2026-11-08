@@ -2,6 +2,7 @@
 
 import { outputKeySchema, stepCriticality, type ExtractField, type Field, type Step } from "@shared/definition";
 import { outputIssuesForSteps } from "@shared/outputs";
+import { Card, CardBody, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ExtractionTreeEditor } from "./extraction-tree-editor";
 
 type Props = {
@@ -79,37 +80,36 @@ export function RecorderReview({ steps, fields, previews, previewTotals, editabl
   const issues = outputIssuesForSteps(steps);
 
   return (
-    <section className="card">
-      <div className="flex items-center justify-between gap-3">
+    <Card>
+      <CardHeader className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="card-title">
-            {editable ? "2. Review and save" : "Recorded steps"}
-          </h2>
-          <p className="card-desc">
+          <CardTitle>{editable ? "2. Review and save" : "Recorded steps"}</CardTitle>
+          <CardDescription>
             {editable
               ? "Rename JSON keys before saving. Captured values stay live and are read again on every run."
               : "Steps and data fields appear here as you work in the browser."}
-          </p>
+          </CardDescription>
         </div>
         <span className="text-xs text-[#5C6070]">{steps.length} steps</span>
-      </div>
+      </CardHeader>
 
-      {issues.length > 0 ? (
-        <p
-          role="alert"
-          className="mt-3 rounded-xl border border-[#F2C5C0] bg-[#FDE8E6] px-3 py-2 text-sm text-[#B42318]"
-        >
-          {issues[0]?.message}
-          {issues.length > 1 ? ` (+${issues.length - 1} more)` : ""}
-        </p>
-      ) : null}
+      <CardBody>
+        {issues.length > 0 ? (
+          <p
+            role="alert"
+            className="mb-3 rounded-xl border border-[#F2C5C0] bg-[#FDE8E6] px-3 py-2 text-sm text-[#B42318]"
+          >
+            {issues[0]?.message}
+            {issues.length > 1 ? ` (+${issues.length - 1} more)` : ""}
+          </p>
+        ) : null}
 
-      {steps.length === 0 ? (
-        <p className="mt-3 text-sm text-[#5C6070]">
-          Interact with the browser window. Steps will appear here as you work.
-        </p>
-      ) : (
-        <ol className="mt-4 max-h-[36rem] space-y-2 overflow-auto pr-1">
+        {steps.length === 0 ? (
+          <p className="text-sm text-[#5C6070]">
+            Interact with the browser window. Steps will appear here as you work.
+          </p>
+        ) : (
+        <ol className="max-h-[36rem] space-y-2 overflow-auto pr-1">
           {steps.map((step, index) => {
             const preview =
               step.type === "extractStructured" || step.type === "extractApi" ? previews[step.id] : undefined;
@@ -216,7 +216,7 @@ export function RecorderReview({ steps, fields, previews, previewTotals, editabl
                               Sample JSON from the page
                               {itemCount !== undefined ? ` (${itemCount} item${itemCount === 1 ? "" : "s"})` : ""}
                             </summary>
-                            <pre className="mt-2 max-h-[28rem] overflow-auto code-block mt-2 max-h-[28rem] overflow-auto text-[11px] text-[#D5D8E2]">
+                            <pre className="code-block mt-2 max-h-[28rem] overflow-auto text-[11px] text-[#D5D8E2]">
                               {JSON.stringify(preview, null, 2)}
                             </pre>
                             <p className="mt-2 text-[11px] text-[#5C6070]">
@@ -256,6 +256,7 @@ export function RecorderReview({ steps, fields, previews, previewTotals, editabl
           </p>
         </div>
       ) : null}
-    </section>
+      </CardBody>
+    </Card>
   );
 }

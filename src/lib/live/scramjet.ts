@@ -32,10 +32,141 @@ export const SCRAM_FILES = {
   all: "/live/vendor/scram/scramjet.all.js",
   sync: "/live/vendor/scram/scramjet.sync.js",
 };
-export const BAREMUX_WORKER = "/live/vendor/baremux/worker.js";
-export const LIBCURL_ENTRY = "/live/vendor/libcurl/index.mjs";
+export const BAREMUX_WORKER = "/live-worker.js";
+export const LIBCURL_ENTRY = "/live-libcurl.mjs";
 export const SW_URL = "/live/sw.js";
 export const SW_SCOPE = "/live/";
+
+const TRANSPORT_TIMEOUT_MS = 15_000;
+const SW_PROBE = "thinklessly-sw-2";
+const SW_PROBE_TIMEOUT_MS = 2_000;
+const SW_ACTIVATION_TIMEOUT_MS = 10_000;
+const SCRAMJET_DB = "$scramjet";
+const SCRAMJET_STORES = ["config", "cookies", "redirectTrackers", "referrerPolicies", "publicSuffixList"];
+
+function liveScope(): string {
+  return new URL(SW_SCOPE, window.location.origin).href;
+}
+
+async function unregisterLiveServiceWorkers(): Promise<void> {
+  if (!("serviceWorker" in navigator)) return;
+  const scope = liveScope();
+  const registrations = await navigator.serviceWorker.getRegistrations().catch(() => []);
+  await Promise.all(
+    registrations
+      .filter((registration) => registration.scope === scope)
+      .map((registration) => registration.unregister().catch(() => false)),
+  );
+}
+
+function deleteScramjetDatabase(): Promise<boolean> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(ok);
+    };
+    const request = indexedDB.deleteDatabase(SCRAMJET_DB);
+    const timer = setTimeout(() => finish(false), 5_000);
+    request.onsuccess = () => {
+      clearTimeout(timer);
+      finish(true);
+    };
+    request.onerror = () => {
+      clearTimeout(timer);
+      finish(false);
+    };
+  });
+}
+
+function scramjetDatabaseExists(): Promise<boolean> {
+  if (typeof indexedDB.databases !== "function") return Promise.resolve(true);
+  return indexedDB
+    .databases()
+    .then((databases) => databases.some((database) => database.name === SCRAMJET_DB))
+    .catch(() => true);
+}
+
+function scramjetDatabaseValid(): Promise<boolean> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    const request = indexedDB.open(SCRAMJET_DB);
+    request.onupgradeneeded = () => {
+      request.transaction?.abort();
+      finish(true);
+    };
+    request.onerror = () => finish(true);
+    request.onsuccess = () => {
+      const db = request.result;
+      const ok = SCRAMJET_STORES.every((store) => db.objectStoreNames.contains(store));
+      db.close();
+      finish(ok);
+    };
+  });
+}
+
+async function ensureScramjetDatabase(): Promise<void> {
+  if (typeof indexedDB === "undefined") return;
+  if (!(await scramjetDatabaseExists())) return;
+  if (await scramjetDatabaseValid()) return;
+  await unregisterLiveServiceWorkers();
+  if (!(await deleteScramjetDatabase())) {
+    throw new Error(
+      "The proxy database could not be reset. Close other Thinklessly tabs, then try again.",
+    );
+  }
+}
+
+function probeServiceWorker(worker: ServiceWorker): Promise<string | null> {
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    const timer = setTimeout(() => resolve(null), SW_PROBE_TIMEOUT_MS);
+    channel.port1.onmessage = (event: MessageEvent) => {
+      clearTimeout(timer);
+      const data = event.data as { probe?: unknown } | undefined;
+      resolve(typeof data?.probe === "string" ? data.probe : null);
+    };
+    try {
+      worker.postMessage({ type: "thinklessly-probe", probe: SW_PROBE }, [channel.port2]);
+    } catch {
+      clearTimeout(timer);
+      resolve(null);
+    }
+  });
+}
+
+async function waitForActivation(registration: ServiceWorkerRegistration): Promise<boolean> {
+  const deadline = Date.now() + SW_ACTIVATION_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    if (registration.active?.state === "activated") return true;
+    const pending = registration.installing ?? registration.waiting;
+    if (pending?.state === "redundant") return false;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return registration.active?.state === "activated";
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
 
 function loadScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -70,34 +201,32 @@ export async function registerLiveServiceWorker(): Promise<void> {
     );
   }
 
+  const scope = liveScope();
+  const existing = (await navigator.serviceWorker.getRegistrations()).filter(
+    (registration) => registration.scope === scope,
+  );
+
+  for (const registration of existing) {
+    if (registration.active && (await probeServiceWorker(registration.active)) === SW_PROBE) {
+      void registration.update().catch(() => undefined);
+      return;
+    }
+  }
+
+  await Promise.all(existing.map((registration) => registration.unregister().catch(() => false)));
+
   const registration = await navigator.serviceWorker.register(SW_URL, {
     scope: SW_SCOPE,
     updateViaCache: "none",
   });
 
-  // Force a fresh check so an updated sw.js does not stay stuck in "waiting".
-  await registration.update().catch(() => undefined);
-
-  // Note: `navigator.serviceWorker.ready` is not usable here because this page
-  // is `/live` while the worker scope is `/live/`. Wait on the registration
-  // itself instead, with a bounded timeout so a broken worker cannot hang the UI.
-  const pending = registration.installing ?? registration.waiting;
-  if (!pending) return;
-
-  await new Promise<void>((resolve) => {
-    const timer = setTimeout(resolve, 8000);
-    const settle = () => {
-      if (pending.state === "activated" || pending.state === "redundant") {
-        clearTimeout(timer);
-        resolve();
-      }
-    };
-    pending.addEventListener("statechange", settle);
-    settle();
-  });
+  if (!(await waitForActivation(registration))) {
+    throw new Error("The live proxy worker did not start. Reload the page and try again.");
+  }
 }
 
 export async function createScramjetController(): Promise<ScramjetControllerLike> {
+  await ensureScramjetDatabase();
   const loader = window.$scramjetLoadController;
   if (!loader) throw new Error("The proxy controller failed to load.");
   const { ScramjetController } = loader();
@@ -133,7 +262,11 @@ export async function configureTransport(wispUrl: string): Promise<void> {
     const connection =
       window.__thinklesslyBareMux ?? new window.BareMux!.BareMuxConnection(BAREMUX_WORKER);
     window.__thinklesslyBareMux = connection;
-    await connection.setTransport(LIBCURL_ENTRY, options);
+    await withTimeout(
+      connection.setTransport(LIBCURL_ENTRY, options),
+      TRANSPORT_TIMEOUT_MS,
+      "The proxy transport did not start. Try Reset proxy, then start recording again.",
+    );
   }
 
   try {

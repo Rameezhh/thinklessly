@@ -257,6 +257,15 @@ export function KeyIcon(props: IconProps) {
   );
 }
 
+export function UploadIcon(props: IconProps) {
+  return (
+    <IconSvg {...props}>
+      <path d="M12 16V4M7 9l5-5 5 5" />
+      <path d="M4 16v2.5A1.5 1.5 0 005.5 20h13a1.5 1.5 0 001.5-1.5V16" />
+    </IconSvg>
+  );
+}
+
 export function CheckIcon(props: IconProps) {
   return (
     <IconSvg {...props}>

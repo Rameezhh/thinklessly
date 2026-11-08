@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import type { Field } from "@shared/definition";
-import { PlayIcon } from "@/components/brand/icons";
+import { PlayIcon, UploadIcon } from "@/components/brand/icons";
 import { startRunAction, type RunFormState } from "@/lib/automation-actions";
 
 const initialState: RunFormState = {};
@@ -33,6 +33,7 @@ export function RunForm({
   const action = startRunAction.bind(null, automationId);
   const [state, formAction, pending] = useActionState(action, initialState);
   const [values, setValues] = useState<Record<string, string | boolean>>(() => initialValues(fields));
+  const [fileNames, setFileNames] = useState<Record<string, string>>({});
   const saved = new Set(savedSecretKeys);
   const hasSecret = fields.some((field) => field.secret);
 
@@ -93,13 +94,33 @@ export function RunForm({
             </label>
 
             {field.type === "file" ? (
-              <input
-                id={id}
-                name={`field:${field.key}`}
-                type="file"
-                required={field.required}
-                className="field field-dark file:mr-3 file:rounded-lg file:border-0 file:bg-[#2A2D38] file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-white"
-              />
+              <label
+                htmlFor={id}
+                className="flex cursor-pointer items-center gap-3 rounded-xl border-[1.5px] border-[#2A2D38] bg-[#1A1C23] px-3 py-2.5 transition-colors hover:border-[#3A3E4D] focus-within:border-[#C8F23B] focus-within:ring-2 focus-within:ring-[#C8F23B]/20"
+              >
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#2A2D38] px-3 py-2 text-xs font-semibold text-[#D5D8E2]">
+                  <UploadIcon size={14} />
+                  Choose file
+                </span>
+                <span
+                  className={`min-w-0 flex-1 truncate text-sm ${
+                    fileNames[field.key] ? "text-[#D5D8E2]" : "text-[#8A8E9E]"
+                  }`}
+                >
+                  {fileNames[field.key] || "No file chosen"}
+                </span>
+                <input
+                  id={id}
+                  name={`field:${field.key}`}
+                  type="file"
+                  required={field.required}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    setFileNames((current) => ({ ...current, [field.key]: file?.name ?? "" }));
+                  }}
+                  className="sr-only"
+                />
+              </label>
             ) : (
               <input
                 id={id}
