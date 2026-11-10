@@ -142,6 +142,27 @@ const DANGEROUS_LABELS = [
   "order now",
 ];
 
+/** Dismiss labels that apply to every obstruction kind on any website. */
+export const GENERIC_DISMISS_LABELS = ["cancel", "ok", "dismiss", "close", "not now", "skip"];
+
+export function genericDismissLabels(): string[] {
+  return GENERIC_DISMISS_LABELS;
+}
+
+/** Labels on standalone "I am human" / "not a robot" checkboxes that should be clicked. */
+export const HUMAN_CHECKBOX_LABELS = [
+  "i am human",
+  "i'm not a robot",
+  "i am not a robot",
+  "not a robot",
+  "verify you are human",
+  "confirm you are human",
+];
+
+export function humanCheckboxLabels(): string[] {
+  return HUMAN_CHECKBOX_LABELS;
+}
+
 const DISMISS_LABELS: Record<ObstructionKind, string[]> = {
   consent: [
     "reject all",

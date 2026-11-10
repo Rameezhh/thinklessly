@@ -4,6 +4,7 @@ import {
   consentContinueLabels,
   continueLabelsFor,
   dismissLabelsFor,
+  genericDismissLabels,
   type ObstructionKind,
 } from "@shared/obstructions";
 import {
@@ -51,7 +52,7 @@ export async function dismissOverlay(
   }
 
   const controls = await overlayControls(overlay.locator);
-  const labelSets: string[][] = [dismissLabelsFor(overlay.kind)];
+  const labelSets: string[][] = [dismissLabelsFor(overlay.kind), genericDismissLabels()];
   if (options.allowContinue !== false) labelSets.push(continueLabelsFor(overlay.kind));
   if (overlay.kind === "consent" && options.allowAcceptConsent) {
     labelSets.push(consentContinueLabels());

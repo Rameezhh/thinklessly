@@ -1,6 +1,11 @@
 import type { Page } from "playwright";
 import type { Step } from "@shared/definition";
-import { continueLabelsFor, isDangerousLabel, looksLikeChallenge } from "@shared/obstructions";
+import {
+  continueLabelsFor,
+  humanCheckboxLabels,
+  isDangerousLabel,
+  looksLikeChallenge,
+} from "@shared/obstructions";
 import { dismissOverlay } from "./obstruction-actions";
 import { findFloatingOverlay, findKnownOverlay } from "./obstruction-find";
 import { clickOnce, isVisible, pickControl } from "./obstruction-helpers";
@@ -133,5 +138,61 @@ export async function dismissObstructions(
 
   if (await dismissPageInterstitial(page, log, stepId)) dismissed = true;
 
+  // Standalone "I am human" / "not a robot" checkboxes on the main page (not
+  // wrapped in an overlay). Click them so the run can continue past simple
+  // bot-verification gates on any website.
+  if (await dismissPageCheckboxes(page, log, stepId)) dismissed = true;
+
   return { dismissed };
+}
+
+/**
+ * Clicks standalone "I am human" / "not a robot" checkboxes on the main page.
+ * These are simple bot-verification gates (not image CAPTCHAs), so clicking
+ * the checkbox is safe and lets the automation proceed.
+ */
+async function dismissPageCheckboxes(page: Page, log: Log, stepId?: string): Promise<boolean> {
+  if (page.isClosed()) return false;
+
+  const labels = humanCheckboxLabels();
+  const checkboxes = page.locator("input[type='checkbox']");
+  const count = Math.min(await checkboxes.count().catch(() => 0), 50);
+
+  for (let index = 0; index < count; index += 1) {
+    const checkbox = checkboxes.nth(index);
+    if (!(await isVisible(checkbox))) continue;
+
+    // Resolve the label text associated with this checkbox via aria-labelledby,
+    // aria-label, or a nearby label element.
+    const label = await checkbox
+      .evaluate((el) => {
+        const input = el as HTMLInputElement;
+        let text = input.getAttribute("aria-label") || "";
+        if (!text) {
+          const labelledBy = input.getAttribute("aria-labelledby");
+          if (labelledBy) {
+            const target = document.getElementById(labelledBy);
+            if (target) text = (target as HTMLElement).innerText || target.textContent || "";
+          }
+        }
+        if (!text) {
+          const form = input.closest("label");
+          if (form) text = (form as HTMLElement).innerText || form.textContent || "";
+        }
+        return text.replace(/\s+/g, " ").trim().slice(0, 120);
+      })
+      .catch(() => "");
+
+    const normalized = label.toLowerCase();
+    if (!labels.some((wanted) => normalized.includes(wanted.toLowerCase()))) continue;
+
+    if (isDangerousLabel(label)) continue;
+    if (!(await clickOnce(checkbox))) continue;
+
+    await log("info", `Clicked human-verification checkbox ("${label}")`, stepId);
+    await page.waitForTimeout(300);
+    return true;
+  }
+
+  return false;
 }
